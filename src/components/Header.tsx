@@ -47,7 +47,6 @@ const Header: React.FC = () => {
       <>
         <NavLink to="/teacher/schedule">Мій розклад</NavLink>
         <NavLink to="/teacher/students">Студенти</NavLink>
-        <NavLink to="/teacher/add-assignment">Додати завдання</NavLink>
       </>
     )}
     {user?.role === "admin" && (
@@ -57,6 +56,28 @@ const Header: React.FC = () => {
       </>
     )}
   </nav>
+          {/* Nav */}
+          <nav className="hidden md:flex gap-6 text-lg">
+            <NavLink to="/" className="hover:opacity-80">Головна</NavLink>
+            {user?.role === "student" && (
+              <>
+                <NavLink to="/student/schedule">Мій розклад</NavLink>
+                <NavLink to="/student/homework">Домашнє</NavLink>
+              </>
+            )}
+            {user?.role === "teacher" && (
+              <>
+                <NavLink to="/teacher/schedule">Мій розклад</NavLink>
+                <NavLink to="/teacher/students">Студенти</NavLink>
+              </>
+            )}
+            {user?.role === "admin" && (
+              <>
+                <NavLink to="/admin/teachers">Викладачі</NavLink>
+                <NavLink to="/admin/schedule">Розклад</NavLink>
+              </>
+            )}
+          </nav>
 
   {/* Right side */}
   <div className="flex items-center gap-3 text-lg">

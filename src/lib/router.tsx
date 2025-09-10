@@ -4,6 +4,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleGuard from "@/components/RoleGuard";
+import RequireAnon from "@/components/RequireAnon";
 import AuthProcessing from "@/pages/AuthProcessing";
 import CompleteProfile from "@/pages/CompleteProfile";
 
@@ -16,7 +17,6 @@ import StudentHomework from "@/pages/student/StudentHomework";
 import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
 import TeacherSchedule from "@/pages/teacher/TeacherSchedule";
 import TeacherStudents from "@/pages/teacher/TeacherStudents";
-import TeacherAddAssignment from "@/pages/teacher/TeacherAddAssignment";
 
 
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -33,8 +33,8 @@ export const router = createBrowserRouter(
       element: <Layout />,
       children: [
         { index: true, element: <Home /> },
-        { path: "login", element: <Login /> },
-        { path: "register", element: <Register /> },
+        { path: "login", element: <RequireAnon><Login /></RequireAnon> },
+        { path: "register", element: <RequireAnon><Register /></RequireAnon> },
         { path: "auth/processing", element: <AuthProcessing /> },
         { path: "complete-profile", element: <CompleteProfile /> },
 
@@ -67,7 +67,6 @@ export const router = createBrowserRouter(
             { path: "dashboard", element: <TeacherDashboard /> },
             { path: "schedule", element: <TeacherSchedule /> },
             { path: "students", element: <TeacherStudents /> },
-            { path: "add-assignment", element: <TeacherAddAssignment /> },
           ],
         },
 

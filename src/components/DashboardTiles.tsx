@@ -13,7 +13,6 @@ export const TeacherTiles = () => (
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <Tile to="/teacher/schedule" title="Мій розклад" icon={"🗓️"} />
     <Tile to="/teacher/students" title="Студенти" icon={"👥"} />
-    <Tile to="/teacher/add-assignment" title="Додати завдання" icon={"✍️"} />
   </div>
 );
 
