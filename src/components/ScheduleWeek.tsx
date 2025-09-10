@@ -29,12 +29,12 @@ const ScheduleWeek: React.FC<{ lessons: Lesson[] }> = ({ lessons }) => {
       <div className="badge">{even ? "Парний тиждень" : "Непарний тиждень"}</div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {days.map(d => (
-          <div key={d.key} className="card p-4">
+          <div key={d.key} className="bg-[var(--card)]/30 backdrop-blur-sm rounded-xl p-4 border border-[var(--border)]">
             <div className="font-semibold mb-3">{d.label}</div>
             <div className="space-y-2">
               {map.get(d.key)!.length === 0 && <div className="text-[var(--muted)] text-sm">Немає пар</div>}
               {map.get(d.key)!.map(l => (
-                <div key={l.id} className="rounded-xl border border-[var(--border)] p-3">
+                <div key={l.id} className="bg-[var(--card)]/1 backdrop-blur-sm rounded-xl border border-[var(--border)] p-3">
                   <div className="text-sm">{l.time.start} — {l.time.end}</div>
                   <div className="font-medium">{l.subject}</div>
                   <div className="text-sm text-[var(--muted)]">

@@ -88,215 +88,175 @@ html[data-theme="dark"] {
   }
 }
 
-/* ===========================
-   PREMIUM AURORA BACKDROP
-   =========================== */
+
+/* === Aurora (brand-aligned) === */
+/* Палітра під твій theme: сині/ціанові акценти, без фільтрів і blend-mode */
 :root {
-  /* Premium Blue Spectrum */
-  --aurora-royal: 29 78 216;      /* Royal Blue */
-  --aurora-electric: 0 149 255;   /* Electric Blue */
-  --aurora-sky: 56 189 248;       /* Sky Blue */
-  --aurora-cyan: 6 182 212;       /* Cyan */
-  --aurora-ice: 165 243 252;      /* Ice Blue */
-  --aurora-deep: 37 99 235;       /* Deep Blue */
-  
-  /* Light mode settings */
-  --aurora-opacity: 0.03;
-  --aurora-blur: 120px;
-  --aurora-scale: 1;
-  --aurora-mix: normal;
+  /* базові кольори плям (light) */
+  --aurora-1: rgba(110, 168, 254, 0.55); /* #6ea8fe ~ твій --primary */
+  --aurora-2: rgba(56, 189, 248, 0.40);  /* sky-400 */
+  --aurora-3: rgba(37, 99, 235, 0.35);   /* blue-600 (глибина) */
+
+  /* швидкості та розміри (можеш крутити) */
+  --aurora-size: 60vmax;
+  --aurora-speed-1: 28s;
+  --aurora-speed-2: 32s;
+  --aurora-speed-3: 36s;
 }
 
 html[data-theme="dark"] {
-  /* Dark mode settings */
-  --aurora-opacity: 0.3;
-  --aurora-blur: 80px;
-  --aurora-scale: 1.1;
-  --aurora-mix: screen;
+  /* трохи яскравіше в дарк-темі */
+  --aurora-1: rgba(110, 168, 254, 0.65);
+  --aurora-2: rgba(34, 211, 238, 0.48);  /* cyan-400 */
+  --aurora-3: rgba(99, 102, 241, 0.42);  /* indigo-500 нюанс */
 }
 
-/* Main Aurora Container */
-.bg-aurora {
+/* каркас лишається як у тебе */
+.aurora {
   position: fixed;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: var(--aurora-opacity);
-  mix-blend-mode: var(--aurora-mix);
-  transform: scale(var(--aurora-scale));
-  will-change: transform;
-}
-
-/* Primary Aurora Layer */
-.bg-aurora::before {
-  content: '';
-  position: absolute;
   inset: 0;
-  background:
-    /* Main focal points */
-    radial-gradient(ellipse 100rem 70rem at 25% 15%, 
-      rgb(var(--aurora-electric) / 0.8) 0%, 
-      rgb(var(--aurora-sky) / 0.3) 25%, 
-      transparent 65%),
-    
-    radial-gradient(ellipse 90rem 65rem at 75% 20%, 
-      rgb(var(--aurora-royal) / 0.7) 0%, 
-      rgb(var(--aurora-deep) / 0.2) 30%, 
-      transparent 70%),
-    
-    /* Mid accents */
-    radial-gradient(circle 80rem at 15% 80%, 
-      rgb(var(--aurora-cyan) / 0.6) 0%, 
-      transparent 50%),
-    
-    radial-gradient(ellipse 85rem 60rem at 85% 75%, 
-      rgb(var(--aurora-sky) / 0.5) 0%, 
-      transparent 55%),
-    
-    /* Subtle highlights */
-    radial-gradient(circle 70rem at 50% 50%, 
-      rgb(var(--aurora-ice) / 0.3) 0%, 
-      transparent 45%),
-    
-    /* Deep shadows */
-    radial-gradient(ellipse 95rem 75rem at 30% 90%, 
-      rgb(var(--aurora-deep) / 0.4) 0%, 
-      transparent 60%);
-  
-  background-size: 
-    130% 130%, 
-    140% 140%, 
-    120% 120%, 
-    135% 135%, 
-    125% 125%, 
-    145% 145%;
-  
-  filter: blur(var(--aurora-blur));
-  animation: aurora-flow 30s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: -1; /* ти вже зняв фон з контейнера — ок */
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
 }
 
-/* Secondary Shimmer Layer */
-.bg-aurora::after {
-  content: '';
+.aurora__blob {
   position: absolute;
-  inset: 10%;
-  background: 
-    conic-gradient(
-      from 180deg at 50% 50%,
-      transparent 0deg,
-      rgb(var(--aurora-electric) / 0.1) 60deg,
-      transparent 120deg,
-      rgb(var(--aurora-cyan) / 0.1) 180deg,
-      transparent 240deg,
-      rgb(var(--aurora-sky) / 0.1) 300deg,
-      transparent 360deg
-    );
-  filter: blur(100px);
-  animation: aurora-rotate 40s linear infinite;
-  opacity: 0.5;
+  width: var(--aurora-size);
+  height: var(--aurora-size);
+  border-radius: 9999px;
+  /* загальна інтенсивність — збалансовано під твій UI */
+  opacity: 0.7;
+  will-change: transform;
+  background: radial-gradient(closest-side, var(--aurora-blob, rgba(110,168,254,.6)) 0%, rgba(0,0,0,0) 68%);
+  transform: translate3d(0,0,0) scale(1);
+  animation: aurora-drift var(--aurora-speed, 30s) ease-in-out infinite alternate;
 }
 
-/* Premium Animations */
-@keyframes aurora-flow {
-  0%, 100% {
-    background-position: 
-      0% 20%,
-      100% 30%,
-      10% 90%,
-      90% 80%,
-      50% 50%,
-      30% 100%;
-    transform: scale(1) rotate(0deg);
-  }
-  
-  20% {
-    background-position: 
-      30% 40%,
-      70% 20%,
-      20% 70%,
-      80% 90%,
-      40% 40%,
-      40% 85%;
-    transform: scale(1.05) rotate(0.5deg);
-  }
-  
-  40% {
-    background-position: 
-      50% 60%,
-      50% 40%,
-      35% 80%,
-      65% 70%,
-      60% 60%,
-      55% 95%;
-    transform: scale(1.02) rotate(-0.5deg);
-  }
-  
-  60% {
-    background-position: 
-      70% 30%,
-      30% 60%,
-      45% 65%,
-      55% 85%,
-      35% 35%,
-      65% 80%;
-    transform: scale(1.08) rotate(0.3deg);
-  }
-  
-  80% {
-    background-position: 
-      20% 50%,
-      80% 50%,
-      60% 85%,
-      40% 75%,
-      55% 55%,
-      25% 90%;
-    transform: scale(1.03) rotate(-0.3deg);
-  }
+/* Три плями з бренд-кольорами */
+.aurora__blob--1 {
+  --aurora-blob: var(--aurora-1);
+  --aurora-speed: var(--aurora-speed-1);
+  left: -10vmax;
+  top: -12vmax;
+}
+.aurora__blob--2 {
+  --aurora-blob: var(--aurora-2);
+  --aurora-speed: var(--aurora-speed-2);
+  right: -12vmax;
+  top: 18vmax;
+}
+.aurora__blob--3 {
+  --aurora-blob: var(--aurora-3);
+  --aurora-speed: var(--aurora-speed-3);
+  left: 22vmax;
+  bottom: -14vmax;
 }
 
-@keyframes aurora-rotate {
-  0% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: rotate(180deg) scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.5;
-  }
-}
-
-/* Performance optimization for mobile */
-@media (max-width: 768px) {
-  .bg-aurora::before {
-    animation-duration: 40s;
-    filter: blur(60px);
-  }
-  .bg-aurora::after {
-    display: none;
-  }
-}
-
-/* High-end devices get extra effects */
-@media (min-width: 1920px) {
-  .bg-aurora {
-    --aurora-blur: 100px;
-  }
-  
-  .bg-aurora::before {
-    animation-duration: 25s;
-  }
+/* Анімація — м’якша, але помітна */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0,0,0) scale(1) rotate(0deg); }
+  40%  { transform: translate3d(8vmax,-5vmax,0) scale(1.08) rotate(8deg); }
+  100% { transform: translate3d(-7vmax,7vmax,0) scale(1.03) rotate(-6deg); }
 }
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .bg-aurora::before,
-  .bg-aurora::after {
-    animation: none;
-  }
+  .aurora__blob { animation: none; transform: none; }
+}
+
+
+/* === Aurora: multi-blobs + chaotic drift === */
+:root{
+  --aurora-size: 56vmax; /* базовий діаметр кулі */
+  --aurora-1: rgba(110, 168, 254, 0.4); /* #6ea8fe */
+  --aurora-2: rgba(34,211,238,0.4);  /* cyan-400 */
+  --aurora-3: rgba(56,189,248,.4);  /* sky-400 */
+  --aurora-4: rgba(99,102,241,.4);  /* indigo-500 */
+  --aurora-5: rgba(37,99,235,.4);   /* blue-600 */
+  --aurora-6: rgba(16,185,129,.3);  /* emerald-500 легкий акцент */
+  --aurora-7: rgba(147,197,253,.35); /* blue-300 soft */
+  --aurora-8: rgba(59,130,246,.38);  /* blue-500 */
+}
+html[data-theme="dark"]{
+  /* в дарк робимо трішки яскравіше */
+  --aurora-1: rgba(110,168,254,.1);
+  --aurora-2: rgba(34,211,238,.2);
+  --aurora-3: rgba(56,189,248,.1);
+  --aurora-4: rgba(99,102,241,.3);
+  --aurora-5: rgba(37,99,235,.1);
+  --aurora-6: rgba(16,185,129,.2);
+  --aurora-7: rgba(147,197,253,.1);
+  --aurora-8: rgba(59,130,246,.2);
+}
+
+.aurora{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  /* можеш відключити маску якщо хочеш бачити весь простір */
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
+}
+
+/* реюзабельний базовий “шарик” */
+.aurora__blob{
+  position: absolute;
+  width: var(--aurora-size);
+  height: var(--aurora-size);
+  border-radius: 9999px;
+  opacity: 0.75;
+  background: radial-gradient(closest-side, var(--clr) 0%, rgba(0,0,0,0) 68%);
+  transform: translate3d(0,0,0) scale(1) rotate(0deg);
+  will-change: transform;
+  animation: var(--motion, chaos-1) var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+/* 8 кольорів + стартові позиції/рухи/швидкості */
+.aurora__blob--1{ --clr: var(--aurora-1); left:-12vmax; top:-14vmax;   --motion: chaos-1; --dur:26s; --delay:-2s; }
+.aurora__blob--2{ --clr: var(--aurora-2); right:-14vmax; top:12vmax;   --motion: chaos-2; --dur:30s; --delay:-6s; }
+.aurora__blob--3{ --clr: var(--aurora-3); left:18vmax; bottom:-16vmax; --motion: chaos-3; --dur:34s; --delay:-10s;}
+.aurora__blob--4{ --clr: var(--aurora-4); right:8vmax; bottom:-10vmax; --motion: chaos-4; --dur:32s; --delay:-14s;}
+.aurora__blob--5{ --clr: var(--aurora-5); left:-8vmax; bottom:22vmax;  --motion: chaos-2; --dur:36s; --delay:-4s; }
+.aurora__blob--6{ --clr: var(--aurora-6); right:22vmax; top:-10vmax;   --motion: chaos-3; --dur:28s; --delay:-8s; }
+.aurora__blob--7{ --clr: var(--aurora-7); left:32vmax; top:18vmax;     --motion: chaos-4; --dur:38s; --delay:-12s;}
+.aurora__blob--8{ --clr: var(--aurora-8); right:-6vmax; bottom:28vmax; --motion: chaos-1; --dur:24s; --delay:-16s;}
+
+/* 4 різні траєкторії — чергуємо для “хаосу” */
+@keyframes chaos-1 {
+  0%   { transform: translate3d( 0,   0, 0) scale(1.00) rotate(0deg); }
+  30%  { transform: translate3d( 8vmax,-6vmax,0) scale(1.06) rotate(8deg); }
+  60%  { transform: translate3d(-6vmax, 7vmax,0) scale(1.03) rotate(-10deg);}
+  100% { transform: translate3d(10vmax, 4vmax,0) scale(1.08) rotate(6deg); }
+}
+@keyframes chaos-2 {
+  0%   { transform: translate3d( 0,   0, 0) scale(1.00) rotate(0deg); }
+  25%  { transform: translate3d(-9vmax, 5vmax,0) scale(1.10) rotate(-6deg);}
+  55%  { transform: translate3d( 6vmax,-8vmax,0) scale(1.04) rotate(12deg);}
+  100% { transform: translate3d(-7vmax,-4vmax,0) scale(1.09) rotate(-4deg);}
+}
+@keyframes chaos-3 {
+  0%   { transform: translate3d( 0,   0, 0) scale(1.00) rotate(0deg); }
+  35%  { transform: translate3d(11vmax, 3vmax,0) scale(1.05) rotate(14deg);}
+  70%  { transform: translate3d(-8vmax,-7vmax,0) scale(1.02) rotate(-8deg);}
+  100% { transform: translate3d( 5vmax,10vmax,0) scale(1.07) rotate(10deg);}
+}
+@keyframes chaos-4 {
+  0%   { transform: translate3d( 0,   0, 0) scale(1.00) rotate(0deg); }
+  20%  { transform: translate3d( 7vmax, 9vmax,0) scale(1.12) rotate(18deg);}
+  50%  { transform: translate3d(-10vmax,-5vmax,0) scale(1.03) rotate(-12deg);}
+  100% { transform: translate3d( 6vmax,-9vmax,0) scale(1.09) rotate(6deg); }
+}
+
+/* Mobile: менше шарів */
+@media (max-width: 768px){
+  .aurora__blob{ opacity:.65; }
+  .aurora__blob:nth-child(n+6){ display:none; } /* залишаємо 5 */
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .aurora__blob{ animation:none; transform:none; }
 }

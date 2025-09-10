@@ -6,7 +6,7 @@ const HomeworkList: React.FC<{ tasks: HomeworkTask[] }> = ({ tasks }) => {
   return (
     <div className="grid gap-4">
       {tasks.map(t => (
-        <div key={t.id} className="card p-4">
+        <div key={t.id} className="card p-4 bg-[var(--card)]/30 backdrop-blur-sm rounded-lg border border-[var(--border)]">
           <div className="flex items-center justify-between">
             <div className="font-semibold">{t.subject}</div>
             <div className="badge">Дедлайн: {t.dueDate}</div>
