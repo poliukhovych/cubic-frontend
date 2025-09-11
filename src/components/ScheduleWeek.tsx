@@ -67,13 +67,13 @@ const ScheduleWeek: React.FC<Props> = ({ lessons, parity, weekStart }) => {
               key={d.key}
               className={[
                 isToday
-                  ? "glasscardToday rounded-xl p-4 border card-smooth hover-shadow"
-                  : "glasscard rounded-xl p-4 border border-[var(--border)] card-smooth hover-shadow"
+                  ? "glasscardToday rounded-xl p-4 border card-smooth hover-shadow hover-lift"
+                  : "glasscard rounded-xl p-4 border border-[var(--border)] card-smooth hover-shadow hover-lift"
               ].join(" ")}
               // Якщо хочеш явну смужку зліва для "сьогодні":
               // style={isToday ? { boxShadow: "inset 3px 0 0 var(--primary)" } : undefined}
             >
-              <div className="font-semibold mb-3 flex items-center gap-2">
+              <div className="font-semibold mb-3 flex items-center gap-2 ">
                 <span>{d.label}{dateShort ? `, ${dateShort}` : ""}</span>
                 {isToday && (
                   <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[var(--primary)]/15 text-[var(--primary)]">
@@ -99,7 +99,7 @@ const ScheduleWeek: React.FC<Props> = ({ lessons, parity, weekStart }) => {
                       key={l.id}
                       {...wrapperProps}
                       className={[
-                        "glasscard rounded-xl p-3",
+                        "glasscard rounded-xl p-3 hover-lift",
                         "block w-full no-underline text-inherit",
                         hasLink ? "cursor-pointer" : ""
                       ].join(" ")}

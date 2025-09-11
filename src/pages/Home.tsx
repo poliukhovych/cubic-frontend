@@ -23,8 +23,8 @@ const Home: React.FC = () => {
             delayMs={0}
             y={0}              // без зсуву для фону
           >
-            <div
-              className="w-full h-full"
+            <div 
+              className="w-full h-full "
               style={{
                 backgroundImage: `url(${bgImage})`,
                 backgroundSize: "cover",
@@ -32,7 +32,7 @@ const Home: React.FC = () => {
               }}
             />
             {/* затемнення хай теж плавно проявляється */}
-            <div className="absolute inset-0 bg-black/60" />
+<div className="absolute inset-0" style={{ background: "var(--hero-dim)" }} />
           </Reveal>
 
           {/* Текст: окремо, без blur, з невеликою затримкою */}
@@ -52,24 +52,24 @@ const Home: React.FC = () => {
 
         {/* далі блоки Features/CTA — можна лишити як було, або додати невеликий delayMs */}
         <div className="grid gap-6 md:grid-cols-2">
-          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] glasscard px-6 py-5  justify-between" delayMs={60}>
+          <Reveal className="mt-4   glasscard px-6 py-5  justify-between" delayMs={60}>
             <h2 className="text-xl font-semibold">Для студентів</h2>
             <p className="mt-2 text-[var(--muted)]">Персональний розклад, статуси домашніх завдань, контроль прогресу.</p>
           </Reveal>
-          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] glasscard px-6 py-5  justify-between" delayMs={120}>
+          <Reveal className="mt-4  glasscard px-6 py-5  justify-between" delayMs={120}>
             <h2 className="text-xl font-semibold">Для викладачів</h2>
             <p className="mt-2 text-[var(--muted)]">Керування групами та підгрупами, створення завдань і контроль виконання.</p>
           </Reveal>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Reveal delayMs={60}>
-            <Link to="/login" className="block card p-6 rounded-2xl shadow-md hover:shadow-lg transition text-center font-semibold text-lg leading-none bg-[var(--primary)]/95 text-white">
+          <Reveal delayMs={180}>
+            <Link to="/login" className="block p-6 rounded-2xl shadow-md hover:shadow-lg transition text-center font-semibold text-lg leading-none bg-[var(--primary)]/80 text-white">
               Увійти
             </Link>
           </Reveal>
-          <Reveal delayMs={120}>
-            <Link to="/register" className="block card p-6 rounded-2xl shadow-md hover:shadow-lg transition text-center font-semibold text-lg leading-none bg-[var(--primary)]/95 text-white">
+          <Reveal delayMs={240}>
+            <Link to="/register" className="block p-6 rounded-2xl shadow-md hover:shadow-lg transition text-center font-semibold text-lg leading-none bg-[var(--primary)]/80 text-white">
               Зареєструватися
             </Link>
           </Reveal>
@@ -82,13 +82,13 @@ const Home: React.FC = () => {
   return (
     <div className="space-y-6">
       <Reveal
-  className="relative z-10 flex items-center justify-center text-center"
-  delayMs={120}
-  y={10}
-  opacityFrom={0}
->
-  <div className="text-2xl font-semibold">Головна</div>
-</Reveal>
+        className="relative z-10 flex items-center justify-center text-center"
+        delayMs={120}
+        y={10}
+        opacityFrom={0}
+      >
+        <div className="text-2xl font-semibold">Головна</div>
+      </Reveal>
       <Reveal delayMs={80}>
         {user.role === "student" && <StudentTiles />}
         {user.role === "teacher" && <TeacherTiles />}

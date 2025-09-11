@@ -13,7 +13,7 @@ type Props = {
 const Tile: React.FC<Props> = ({ to, title, subtitle, icon, bg }) => (
   <Link
     to={to}
-    className="glasscard p-5 hover:brightness-110 transition relative overflow-hidden rounded-2xl"
+    className="glasscard p-5 hover-lift "
     style={
       bg
         ? {

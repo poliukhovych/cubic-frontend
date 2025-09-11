@@ -83,7 +83,7 @@ export async function fetchStudentHomework(studentId: string): Promise<StudentHo
       subject: "БД",
       text: "Нормалізувати схему до 3НФ. Зверніть увагу на аномалії вставки/оновлення/видалення та наведіть приклади.",
       createdAt: new Date().toISOString(),
-      dueDate: mkDate(4), // ближній дедлайн
+      dueDate: mkDate(-4), // ближній дедлайн
       groupId: "g1",
       teacherId: "t1",
       classroomUrl: "https://classroom.google.com/c/ABCD1234/a/XYZ111",
@@ -94,7 +94,7 @@ export async function fetchStudentHomework(studentId: string): Promise<StudentHo
       subject: "ОПП",
       text: "Реалізувати патерн Observer",
       createdAt: new Date().toISOString(),
-      dueDate: mkDate(7),
+      dueDate: mkDate(-3),
       groupId: "g1",
       teacherId: "t2",
       classroomUrl: "https://classroom.google.com/c/EFGH5678/a/XYZ222",

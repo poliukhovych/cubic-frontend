@@ -92,8 +92,8 @@ const HomeworkWeek: React.FC<Props> = ({ tasks, week, setWeek, totalWeeks, semes
               key={wd.k}
               className={[
                 isToday
-                  ? "glasscardToday rounded-xl p-4 card-smooth hover-shadow"
-                  : "glasscard rounded-xl p-4 card-smooth hover-shadow"
+                  ? "glasscardToday rounded-xl p-4 card-smooth hover-shadow hover-lift"
+                  : "glasscard rounded-xl p-4 card-smooth hover-shadow hover-lift "
               ].join(" ")}
               aria-current={isToday ? "date" : undefined}
             >

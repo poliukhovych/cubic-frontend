@@ -5,6 +5,7 @@ import type { Student } from "@/types/students";
 import { useAuth } from "@/types/auth";
 import Reveal from "@/components/Reveal";
 import { cls } from "@/lib/utils/cls";
+import { ChevronDown } from "lucide-react";
 
 /* ---------------------------------- types --------------------------------- */
 type GroupKey = { groupId: string; subgroup?: string | null };
@@ -62,13 +63,13 @@ const GroupPanel = React.memo(function GroupPanel({
   return (
     <Reveal delayMs={revealDelay} y={8} opacityFrom={0.02} blurPx={6}>
       <div className={cls(
-        "glasscard rounded-2xl overflow-hidden border transition-shadow",
+        "glasscard rounded-2xl overflow-hidden border transition-shadow hover-lift",
         isOpen ? "shadow-lg" : "shadow"
       )}>
         {/* Хедер групи */}
         <button
           type="button"
-          className="w-full flex items-center justify-between gap-4 p-4 hover:bg-white/5 transition-colors text-left"
+          className="w-full flex items-center justify-between gap-4 p-4 transition-colors text-left"
           aria-expanded={isOpen}
           onClick={() => onToggle(bucket.label)}
         >
@@ -83,10 +84,8 @@ const GroupPanel = React.memo(function GroupPanel({
               </div>
             </div>
           </div>
-          <div className={cls(
-            "i-lucide-chevron-down transition-transform duration-300",
-            isOpen && "rotate-180"
-          )}/>
+            <ChevronDown className={cls("h-5 w-5 transition-transform duration-300 ", isOpen && "rotate-180")} />
+
         </button>
 
         {/* Розкривна частина: тільки CSS-висота (без Crossfade), щоб не чіпати сусідів */}
@@ -99,12 +98,12 @@ const GroupPanel = React.memo(function GroupPanel({
         >
           <div className="overflow-hidden">
             {/* Ключ міняється при кожному відкритті саме цієї групи → анімація студентів відпрацьовує знову */}
-            <div key={openVersion} className="px-4 pb-4">
+            <div key={openVersion} className="px-4 pb-4 mt-4">
               {/* студенти у стовпчик з нумерацією */}
               <div className="space-y-2">
                 {studentsSorted.map((s, j) => (
                   <Reveal key={s.id} delayMs={40 + j * 20} y={6} opacityFrom={0}>
-                    <div className="card p-3 flex items-center justify-between">
+                    <div className="card  hover-lift p-3 flex items-center justify-between ">
                       <div className="flex items-center gap-3 min-w-0">
                         {/* порядковий номер */}
                         <div className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--primary)]/20 text-sm font-medium shrink-0">
@@ -131,7 +130,7 @@ const GroupPanel = React.memo(function GroupPanel({
 const TeacherStudents: React.FC = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set()); // відкриті групи
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -142,7 +141,13 @@ const TeacherStudents: React.FC = () => {
 
   const buckets = useMemo(() => groupStudents(students), [students]);
 
-  // стабільний onToggle, щоб React.memo не змушував сусідні групи ререндеритись
+  // Розподіл по 2 колонках: 0 — ліва, 1 — права
+  const columns = useMemo(() => {
+    const cols: { b: GroupBucket; i: number }[][] = [[], []];
+    buckets.forEach((b, i) => cols[i % 2].push({ b, i }));
+    return cols;
+  }, [buckets]);
+
   const handleToggle = useCallback((kk: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -153,25 +158,27 @@ const TeacherStudents: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Заголовок із м’яким входом, один раз */}
       <Reveal className="relative z-10 flex items-center justify-center text-center" delayMs={100} y={10} opacityFrom={0}>
         <div className="text-2xl font-semibold">Студенти</div>
       </Reveal>
 
-      {/* Грід груп: 1 колонка мобілка, 2 колонки >= sm */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {buckets.map((b, i) => (
-          <GroupPanel
-            key={b.label}
-            bucket={b}
-            isOpen={expanded.has(b.label)}
-            onToggle={handleToggle}
-            revealDelay={80 + i * 40}
-          />
+      {/* Замість однієї сітки з картками — грід із КОЛОНКАМИ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+        {columns.map((col, colIdx) => (
+          <div key={colIdx} className="flex flex-col gap-4">
+            {col.map(({ b, i }) => (
+              <GroupPanel
+                key={b.label}
+                bucket={b}
+                isOpen={expanded.has(b.label)}
+                onToggle={handleToggle}
+                revealDelay={80 + i * 40} // зберігаємо послідовність затримок
+              />
+            ))}
+          </div>
         ))}
       </div>
     </div>
   );
 };
-
 export default TeacherStudents;

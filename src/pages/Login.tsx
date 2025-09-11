@@ -25,7 +25,7 @@ const Login: React.FC = () => {
       <div className="text-xl font-semibold mb-4">Вхід</div>
 
       {/* PROD-кейс — базова кнопка (працюватиме і в DEV) */}
-      <button className="btn-primary w-full" onClick={loginWithGoogle}>
+      <button className="btn w-full" onClick={loginWithGoogle}>
         Увійти через Google
       </button>
 
@@ -34,7 +34,7 @@ const Login: React.FC = () => {
         <>
           <div className="text-[var(--muted)] mt-2">DEV-швидкий вхід:</div>
           <button
-            className="btn-primary w-full"
+            className="btn w-full"
             onClick={() => {
               loginAs("student");
               nav(isPathAllowedForRole(next, "student") ? next : ROLE_HOME["student"], { replace: true });
@@ -43,7 +43,7 @@ const Login: React.FC = () => {
             Зайти як студент
           </button>
           <button
-            className="btn-primary w-full"
+            className="btn w-full"
             onClick={() => {
               loginAs("teacher");
               nav(isPathAllowedForRole(next, "teacher") ? next : ROLE_HOME["teacher"], { replace: true });
@@ -52,7 +52,7 @@ const Login: React.FC = () => {
             Зайти як викладач
           </button>
           <button
-            className="btn-primary w-full"
+            className="btn w-full"
             onClick={() => {
               loginAs("admin");
               nav(isPathAllowedForRole(next, "admin") ? next : ROLE_HOME["admin"], { replace: true });

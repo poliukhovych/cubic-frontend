@@ -16,8 +16,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // };
 
   const getInitial = (): Theme => {
-  const saved = localStorage.getItem(KEY) as Theme | null;
-  if (saved) return saved;
+
   return "dark"; // 👈 дефолтна тема
 };
 

@@ -6,13 +6,13 @@ import Aurora from "./Aurora";
 
 const Layout: React.FC = () => {
   return (
-    <div className="relative flex flex-col min-h-dvh text-[var(--text)]">
+    <div className="relative flex min-h-dvh flex-col text-[var(--text)]">
       {/* 🔮 Глобальний фон-аврора */}
-        <Aurora /> {/* легка GPU-анімація */}
-
+      <Aurora /> {/* легка GPU-анімація */}
 
       <Header />
-      <main className="flex-1 mx-auto max-w-6xl px-4 pt-28">
+      {/* grow = займи все що залишилось, щоб футер пішов вниз */}
+      <main className="flex-grow mx-auto w-full max-w-6xl px-4 pt-28">
         <Outlet />
       </main>
       <Footer />

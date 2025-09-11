@@ -1,7 +1,7 @@
 // src/lib/api.ts
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
-
 import { config } from "@/config/runtime";
+
+export const API_BASE = config.API_BASE_URL;
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type Json = Record<string, unknown> | undefined;
@@ -12,7 +12,7 @@ async function request<T>(
 ): Promise<T> {
   const { method = "GET", body, headers } = opts;
 
-  const res = await fetch(config.API_BASE_URL + path, {
+  const res = await fetch(API_BASE + path, {
     method,
     credentials: "include",
     headers: {
@@ -33,9 +33,9 @@ async function request<T>(
 }
 
 export const api = {
-  get:  <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: Json) => request<T>(path, { method: "POST", body }),
-  put:  <T>(path: string, body?: Json) => request<T>(path, { method: "PUT", body }),
-  patch:<T>(path: string, body?: Json) => request<T>(path, { method: "PATCH", body }),
+  get:   <T>(path: string) => request<T>(path),
+  post:  <T>(path: string, body?: Json) => request<T>(path, { method: "POST", body }),
+  put:   <T>(path: string, body?: Json) => request<T>(path, { method: "PUT", body }),
+  patch: <T>(path: string, body?: Json) => request<T>(path, { method: "PATCH", body }),
   delete:<T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

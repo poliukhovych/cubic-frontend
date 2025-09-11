@@ -14,17 +14,19 @@ const WeekDots: React.FC<Props> = ({ total, value, onChange }) => {
         const week = i + 1;
         const active = week === value;
         return (
+          // src/components/WeekDots.tsx
           <button
             key={week}
             onClick={() => onChange(week)}
             className={[
-              "w-4 h-4 rounded-full transition-colors glasscard", // зробив трохи більші
+              "w-4 h-4 rounded-full transition-colors border border-[var(--border)] hover-lift",
               active
-                ? "bg-[var(--primary)]/80" // активна: напівпрозора синя
-                : "bg-[var(--muted)]/10 hover:bg-[var(--muted)]/60" // неактивна: сіріша, ще більш прозора
+                ? "bg-[var(--primary)]/60"
+                : "bg-[var(--muted)]/10 hover:bg-[var(--muted)]/60"
             ].join(" ")}
             aria-label={`Тиждень ${week}`}
           />
+
         );
       })}
     </div>

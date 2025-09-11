@@ -9,6 +9,7 @@ import Crossfade from "@/components/Crossfade";
 import HomeworkWeek from "@/components/HomeworkWeek";
 import { getFirstTeachingMonday, getWeekIndex } from "@/lib/time/academicWeek";
 
+
 const StudentHomework: React.FC = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<HomeworkTask[]>([]);
