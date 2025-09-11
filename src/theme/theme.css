@@ -260,3 +260,23 @@ html[data-theme="dark"]{
 @media (prefers-reduced-motion: reduce){
   .aurora__blob{ animation:none; transform:none; }
 }
+
+@utility glasscard {
+  @apply border ;
+
+  background-color: rgb(from var(--card) r g b / 0.40); /* прозорість обов'язкова */
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12);
+  border-color: color-mix(in oklab, var(--border), transparent 35%);
+}
+
+
+@utility glasscardMd {
+  @apply border backdrop-blur-md;
+  background-color: rgb(from var(--card) r g b / 0.50);
+  box-shadow: 0 0 36px rgba(0, 0, 0, 0.14);
+  border-color: color-mix(in oklab, var(--border), transparent 30%);
+  backdrop-filter: blur(8px);
+}
+
+
+

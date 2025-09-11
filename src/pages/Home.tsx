@@ -52,11 +52,11 @@ const Home: React.FC = () => {
 
         {/* далі блоки Features/CTA — можна лишити як було, або додати невеликий delayMs */}
         <div className="grid gap-6 md:grid-cols-2">
-          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-sm px-6 py-5  justify-between" delayMs={60}>
+          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] glasscard px-6 py-5  justify-between" delayMs={60}>
             <h2 className="text-xl font-semibold">Для студентів</h2>
             <p className="mt-2 text-[var(--muted)]">Персональний розклад, статуси домашніх завдань, контроль прогресу.</p>
           </Reveal>
-          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--card)]/30 backdrop-blur-sm px-6 py-5  justify-between" delayMs={120}>
+          <Reveal className="mt-4 rounded-2xl border border-[var(--border)] glasscard px-6 py-5  justify-between" delayMs={120}>
             <h2 className="text-xl font-semibold">Для викладачів</h2>
             <p className="mt-2 text-[var(--muted)]">Керування групами та підгрупами, створення завдань і контроль виконання.</p>
           </Reveal>
@@ -81,7 +81,14 @@ const Home: React.FC = () => {
   // Dashboard для авторизованих
   return (
     <div className="space-y-6">
-      <Reveal><div className="text-2xl font-semibold">Головна</div></Reveal>
+      <Reveal
+  className="relative z-10 flex items-center justify-center text-center"
+  delayMs={120}
+  y={10}
+  opacityFrom={0}
+>
+  <div className="text-2xl font-semibold">Головна</div>
+</Reveal>
       <Reveal delayMs={80}>
         {user.role === "student" && <StudentTiles />}
         {user.role === "teacher" && <TeacherTiles />}

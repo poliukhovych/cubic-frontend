@@ -2,7 +2,7 @@
 import React from "react";
 
 const Footer: React.FC = () => (
-  <footer className="mt-12 border-t border-[var(--border)] text-sm text-[var(--muted)]">
+  <footer className="glasscard mt-12 text-sm text-[var(--muted)]">
     <div className="mx-auto max-w-6xl px-4 py-8">
       © {new Date().getFullYear()} Faculty Helper
     </div>
