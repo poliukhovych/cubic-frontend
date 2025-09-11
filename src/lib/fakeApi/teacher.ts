@@ -2,9 +2,8 @@
 import { ok, uid } from "./index";
 import type { TeacherSchedule } from "@/types/schedule";
 import type { Student } from "@/types/students";
-import type { HomeworkTask } from "@/types/homework";
 
-// Стандартні часові слоти пар (узгоджено зі студентським фейком)
+// Стандартні часові слоти пар
 const PAIRS = {
   1: { start: "08:30", end: "10:05" },
   2: { start: "10:25", end: "12:00" },
@@ -14,7 +13,7 @@ const PAIRS = {
 } as const;
 
 type PairNo = keyof typeof PAIRS;
-type Weekday = 1|2|3|4|5|6|7; // 1=Пн
+type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7; // 1=Пн
 
 // Хелпер для створення заняття
 const L = (
@@ -35,108 +34,173 @@ const L = (
 });
 
 export async function fetchTeacherSchedule(teacherId: string): Promise<TeacherSchedule> {
-  // ГРУПИ
-  // 1 курс
-  const G11a = { id: "g11", name: "КН-11", subgroup: "a" as const };
-  const G11b = { id: "g11", name: "КН-11", subgroup: "b" as const };
-  const G12a = { id: "g12", name: "КН-12", subgroup: "a" as const };
-  const G12b = { id: "g12", name: "КН-12", subgroup: "b" as const };
+  // ==== ГРУПИ (оновлено під вимоги) ====
+  // ІПС-11 (із підгрупами)
+  const IPS11a = { id: "ips11", name: "ІПС-11", subgroup: "a" as const };
+  const IPS11b = { id: "ips11", name: "ІПС-11", subgroup: "b" as const };
 
-  // 2 курс
-  const G21a = { id: "g21", name: "КН-21", subgroup: "a" as const };
-  const G21b = { id: "g21", name: "КН-21", subgroup: "b" as const };
-  const G22a = { id: "g22", name: "КН-22", subgroup: "a" as const };
-  const G22b = { id: "g22", name: "КН-22", subgroup: "b" as const };
-  const G23a = { id: "g23", name: "КН-23", subgroup: "a" as const };
-  const G23b = { id: "g23", name: "КН-23", subgroup: "b" as const };
+  // КН-21 (із підгрупами)
+  const KN21a = { id: "kn21", name: "КН-21", subgroup: "a" as const };
+  const KN21b = { id: "kn21", name: "КН-21", subgroup: "b" as const };
 
-  // 4 курс (без підгруп)
-  const G41  = { id: "g41", name: "КН-41", subgroup: null };
-  const G42  = { id: "g42", name: "КН-42", subgroup: null };
+  // ПМ-41 (без підгруп)
+  const PM41  = { id: "pm41", name: "ПМ-41", subgroup: null };
 
-  // РОЗКЛАД
+  // ІНФ-42 (без підгруп)
+  const INF42 = { id: "inf42", name: "ІНФ-42", subgroup: null };
+
+  // ==== РОЗКЛАД (приклад, залишив різну парність/дні, як у твоєму демо) ====
   const lessons = [
-    // ===== 1 курс: МЕДІАКОНТРОЛЬ (в підгрупах) =====
-    // Пн: КН-11 (а/б) — рознесено по парності, щоб перевірити перемикач тижнів
-    L(1, 2, "Медіаконтроль (лаб.)", G11a, "лаб. 1-02", "odd"),
-    L(1, 2, "Медіаконтроль (лаб.)", G11b, "лаб. 1-03", "even"),
+    // ІПС-11: медіаконтроль у підгрупах по парності
+    L(1, 2, "Медіаконтроль (лаб.)", IPS11a, "лаб. 1-02", "odd"),
+    L(1, 2, "Медіаконтроль (лаб.)", IPS11b, "лаб. 1-03", "even"),
+    L(4, 1, "Медіаконтроль (лаб.)", IPS11a, "ауд. 207", "even"),
+    L(4, 1, "Медіаконтроль (семінар)", IPS11b, "ауд. 208", "odd"),
 
-    // Вт: КН-12 (а/б) — одночасні підгрупи
-    L(2, 3, "Медіаконтроль (лаб.)", G12a, "лаб. 1-05", "any"),
-    L(2, 3, "Медіаконтроль (лаб.)", G12b, "лаб. 1-06", "any"),
+    // КН-21: ООП (лекція всій групі) + практики в підгрупах
+    L(3, 2, "ООП (лекція)", { id: "kn21", name: "КН-21", subgroup: null }, "ауд. 502", "any"),
+    L(3, 3, "ООП (практика)", KN21a, "лаб. 2-10", "any"),
+    L(3, 3, "ООП (практика)", KN21b, "лаб. 2-11", "any"),
 
-    // Чт: КН-11 (зміна підгруп по парності)
-    L(4, 1, "Медіаконтроль (лаб.)", G11a, "ауд. 207", "even"),
-    L(4, 1, "Медіаконтроль (семінар)", G11b, "ауд. 208", "odd"),
+    // ПМ-41: Розробка БД (лекція) + практикум
+    L(2, 5, "Розробка баз даних (лекція)", PM41, "ауд. 114", "any"),
+    L(4, 4, "Розробка баз даних (практикум)", PM41, "лаб. 3-12", "any"),
 
-    // ===== 2 курс: ООП (поділено на 2 підгрупи в 3 групах) =====
-    // Ср: КН-21
-    L(3, 2, "ООП (лекція)",         { id: "g21", name: "КН-21", subgroup: null }, "ауд. 502", "any"),
-    L(3, 3, "ООП (практика)",       G21a, "лаб. 2-10", "any"),
-    L(3, 3, "ООП (практика)",       G21b, "лаб. 2-11", "any"),
-
-    // Пт: КН-22 — підгрупи з парністю
-    L(5, 1, "ООП (лекція)",         { id: "g22", name: "КН-22", subgroup: null }, "ауд. 401", "any"),
-    L(5, 2, "ООП (практика)",       G22a, "лаб. 2-07", "odd"),
-    L(5, 2, "ООП (практика)",       G22b, "лаб. 2-08", "even"),
-
-    // Сб: КН-23 — пізні пари
-    L(6, 3, "ООП (лекція)",         { id: "g23", name: "КН-23", subgroup: null }, "ауд. 305", "any"),
-    L(6, 4, "ООП (практика)",       G23a, "лаб. 2-03", "any"),
-    L(6, 4, "ООП (практика)",       G23b, "лаб. 2-04", "any"),
-
-    // ===== 4 курс: Розробка баз даних (2 групи) =====
-    // Вт: вечірні лекції
-    L(2, 5, "Розробка баз даних (лекція)", G41, "ауд. 114", "any"),
-    // Чт: практикум для обох груп — чергується по парності
-    L(4, 4, "Розробка баз даних (практикум)", G41, "лаб. 3-12", "odd"),
-    L(4, 4, "Розробка баз даних (практикум)", G42, "лаб. 3-12", "even"),
-    // Нд: разові консультації — щоб показати різні дні
-    L(7, 2, "Розробка БД (консультація)",    G42, "ауд. 214", "any"),
+    // ІНФ-42: консультації/лекції у різні дні
+    L(5, 1, "Теорія алгоритмів (лекція)", INF42, "ауд. 401", "any"),
+    L(7, 2, "Теорія алгоритмів (консультація)", INF42, "ауд. 214", "any"),
   ];
 
-  // За бажанням можна додати totalWeeks:
+  // Можна додати totalWeeks при потребі:
   // return ok({ teacherId, lessons, totalWeeks: 16 } as any);
   return ok({ teacherId, lessons });
 }
 
+// Утиліта створення студента
+const S = (fullName: string, email: string, groupId: string, subgroup?: "a" | "b"): Student =>
+  ({ id: uid(), name: fullName, email, groupId, subgroup });
+
 export async function fetchMyStudents(teacherId: string): Promise<Student[]> {
-  // Набросали побільше студентів по групах/підгрупах
+  // ІПС-11: дві підгрупи по 12 → разом 24 (у межах 20–30 на групу, 10–15 на підгрупу)
+  const ips11a: Student[] = [
+    S("Петренко Іван Олександрович", "ivan.petrenko@uni.ua", "ips11", "a"),
+    S("Коваль Олена Михайлівна", "olena.koval@uni.ua", "ips11", "a"),
+    S("Мельник Андрій Сергійович", "andrii.melnyk@uni.ua", "ips11", "a"),
+    S("Шевченко Марія Ігорівна", "maria.shevchenko@uni.ua", "ips11", "a"),
+    S("Бондар Володимир Петрович", "volodymyr.bondar@uni.ua", "ips11", "a"),
+    S("Кравчук Наталія Вікторівна", "nataliia.kravchuk@uni.ua", "ips11", "a"),
+    S("Сидоренко Дмитро Володимирович", "dmytro.sydorenko@uni.ua", "ips11", "a"),
+    S("Зінченко Ірина Олександрівна", "iryna.zinchenko@uni.ua", "ips11", "a"),
+    S("Лисенко Ростислав Валерійович", "rostyslav.lysenko@uni.ua", "ips11", "a"),
+    S("Романюк Ганна Степанівна", "hanna.romaniuk@uni.ua", "ips11", "a"),
+    S("Гончарук Максим Юрійович", "maksym.honcharuk@uni.ua", "ips11", "a"),
+    S("Ткаченко Софія Тарасівна", "sofiia.tkachenko@uni.ua", "ips11", "a"),
+  ];
+
+  const ips11b: Student[] = [
+    S("Данилюк Артем Леонідович", "artem.danyliuk@uni.ua", "ips11", "b"),
+    S("Онищенко Валерія Павлівна", "valeriia.onyshchenko@uni.ua", "ips11", "b"),
+    S("Мороз Павло Романович", "pavlo.moroz@uni.ua", "ips11", "b"),
+    S("Поліщук Оксана Євгенівна", "oksana.polishchuk@uni.ua", "ips11", "b"),
+    S("Чорний Юрій Анатолійович", "yurii.chornyi@uni.ua", "ips11", "b"),
+    S("Яковенко Катерина Ігорівна", "kateryna.yakovenko@uni.ua", "ips11", "b"),
+    S("Савченко Ілля Олексійович", "illia.savchenko@uni.ua", "ips11", "b"),
+    S("Кириленко Дарина Миколаївна", "daryna.kyrylenko@uni.ua", "ips11", "b"),
+    S("Юрченко Владислав Олегович", "vladyslav.yurchenko@uni.ua", "ips11", "b"),
+    S("Руденко Аліна Сергіївна", "alina.rudenko@uni.ua", "ips11", "b"),
+    S("Волошин Михайло Андрійович", "mykhailo.voloshyn@uni.ua", "ips11", "b"),
+    S("Козак Лілія Богданівна", "liliia.kozak@uni.ua", "ips11", "b"),
+  ];
+
+  // КН-21: дві підгрупи по 13 → разом 26
+  const kn21a: Student[] = [
+    S("Авраменко Олександр Сергійович", "oleksandr.avramenko@uni.ua", "kn21", "a"),
+    S("Березюк Ольга Володимирівна", "olha.bereziuk@uni.ua", "kn21", "a"),
+    S("Василенко Денис Петрович", "denys.vasylenko@uni.ua", "kn21", "a"),
+    S("Гаврилюк Марина Вікторівна", "maryna.havryliuk@uni.ua", "kn21", "a"),
+    S("Гордієнко Сергій Олегович", "serhii.hordiienko@uni.ua", "kn21", "a"),
+    S("Демчук Анастасія Ігорівна", "anastasiia.demchuk@uni.ua", "kn21", "a"),
+    S("Жуков Богдан Валентинович", "bohdan.zhukov@uni.ua", "kn21", "a"),
+    S("Захарченко Владислава Романівна", "vladyslava.zakharchenko@uni.ua", "kn21", "a"),
+    S("Іщенко Тарас Михайлович", "taras.ishchenko@uni.ua", "kn21", "a"),
+    S("Калініченко Єлизавета Олександрівна", "yel.v.kalinichenko@uni.ua", "kn21", "a"),
+    S("Ковтун Назар Віталійович", "nazar.kovtun@uni.ua", "kn21", "a"),
+    S("Куценко Олексій Артемович", "oleksii.kutsenko@uni.ua", "kn21", "a"),
+    S("Луценко Дарія Степанівна", "dariia.lutsenko@uni.ua", "kn21", "a"),
+  ];
+
+  const kn21b: Student[] = [
+    S("Мазур Іванна Сергіївна", "ivanna.mazur@uni.ua", "kn21", "b"),
+    S("Марчук Роман Юрійович", "roman.marchuk@uni.ua", "kn21", "b"),
+    S("Нікітін Олексій Леонідович", "oleksii.nikitin@uni.ua", "kn21", "b"),
+    S("Опанасенко Олександра Андріївна", "oleksandra.opanasenko@uni.ua", "kn21", "b"),
+    S("Паламарчук Катерина Богданівна", "kateryna.palamarchuk@uni.ua", "kn21", "b"),
+    S("Петрук Артем Анатолійович", "artem.petruk@uni.ua", "kn21", "b"),
+    S("Рибак Ігор Валерійович", "ihor.rybak@uni.ua", "kn21", "b"),
+    S("Семенюк Христина Тарасівна", "khrystyna.semeniuk@uni.ua", "kn21", "b"),
+    S("Скрипник Владлена Ігорівна", "vladlena.skrypnyk@uni.ua", "kn21", "b"),
+    S("Тимченко Ярослав Віталійович", "yaroslav.tymchenko@uni.ua", "kn21", "b"),
+    S("Федорчук Микита Олексійович", "mykyta.fedorchuk@uni.ua", "kn21", "b"),
+    S("Хара Ірина Сергіївна", "iryna.kh@uni.ua", "kn21", "b"),
+    S("Цимбал Анна Леонідівна", "anna.tsymbal@uni.ua", "kn21", "b"),
+  ];
+
+  // ПМ-41: одна група без підгруп — 22 студенти
+  const pm41: Student[] = [
+    S("Абрамчук Віктор Миколайович", "victor.abramchuk@uni.ua", "pm41"),
+    S("Бабенко Світлана Олександрівна", "svitlana.babenko@uni.ua", "pm41"),
+    S("Войтенко Андрій Петрович", "andrii.voitenko@uni.ua", "pm41"),
+    S("Гнатюк Олег Вікторович", "oleh.hnatiuk@uni.ua", "pm41"),
+    S("Дзюба Марія Романівна", "mariia.dziuba@uni.ua", "pm41"),
+    S("Єрмаков Максим Олександрович", "maksym.yermakov@uni.ua", "pm41"),
+    S("Журавель Катерина Сергіївна", "kateryna.zhuravel@uni.ua", "pm41"),
+    S("Заяць Ірина Віталіївна", "iryna.zaiats@uni.ua", "pm41"),
+    S("Іваненко Богдан Олегович", "bohdan.ivanenko@uni.ua", "pm41"),
+    S("Кіліченко Руслан Сергійович", "ruslan.kilichenko@uni.ua", "pm41"),
+    S("Левченко Аліса Олександрівна", "alisa.levchenko@uni.ua", "pm41"),
+    S("Мазепа Михайло Тарасович", "mykhailo.mazepa@uni.ua", "pm41"),
+    S("Носенко Вікторія Віталіївна", "viktoriia.nosenko@uni.ua", "pm41"),
+    S("Овчаренко Степан Юрійович", "stepan.ovcharenko@uni.ua", "pm41"),
+    S("Панченко Дмитро Ігорович", "dmytro.panchenko@uni.ua", "pm41"),
+    S("Радчук Софія Леонідівна", "sofiia.radchuk@uni.ua", "pm41"),
+    S("Сорока Павло Андрійович", "pavlo.soroka@uni.ua", "pm41"),
+    S("Титаренко Дарина Олегівна", "daryna.tytarenko@uni.ua", "pm41"),
+    S("Усенко Роман Сергійович", "roman.usenko@uni.ua", "pm41"),
+    S("Франко Оксана Михайлівна", "oksana.franko@uni.ua", "pm41"),
+    S("Хоменко Євген Вікторович", "yevhen.khomenko@uni.ua", "pm41"),
+    S("Цвєткова Лідія Павлівна", "lidiia.tsvetkova@uni.ua", "pm41"),
+  ];
+
+  // ІНФ-42: одна група без підгруп — 21 студент
+  const inf42: Student[] = [
+    S("Анікіна Валентина Петрівна", "valentyna.anikina@uni.ua", "inf42"),
+    S("Білоус Сергій Миколайович", "serhii.bilous@uni.ua", "inf42"),
+    S("Варченко Кирило Олександрович", "kyrylo.varchenko@uni.ua", "inf42"),
+    S("Герасимчук Анастасія Ігорівна", "anastasiia.herasymchuk@uni.ua", "inf42"),
+    S("Дяченко Олег Анатолійович", "oleh.diachenko@uni.ua", "inf42"),
+    S("Ємець Ілля Вадимович", "illia.yemets@uni.ua", "inf42"),
+    S("Журба Тетяна Володимирівна", "tetiana.zhurba@uni.ua", "inf42"),
+    S("Зборовський Андрій Миколайович", "andrii.zborovskyi@uni.ua", "inf42"),
+    S("Ісаєва Катерина Олександрівна", "kateryna.isaeva@uni.ua", "inf42"),
+    S("Кириченко Назар Миколайович", "nazar.kyrychenko@uni.ua", "inf42"),
+    S("Литвин Ірина Степанівна", "iryna.lytvyn@uni.ua", "inf42"),
+    S("Малик Юлія Сергіївна", "yuliia.malyk@uni.ua", "inf42"),
+    S("Нечипоренко Богдан Вікторович", "bohdan.nechyporenko@uni.ua", "inf42"),
+    S("Острогляд Олександра Тарасівна", "oleksandra.ostrohliad@uni.ua", "inf42"),
+    S("Паламар Артем Валентинович", "artem.palamar@uni.ua", "inf42"),
+    S("Рибчинський Микита Ігоревич", "mykyta.rybchynskyi@uni.ua", "inf42"),
+    S("Савчук Марія Олексіївна", "mariia.savchuk@uni.ua", "inf42"),
+    S("Терещенко Владислав Петрович", "vladyslav.tereshchenko@uni.ua", "inf42"),
+    S("Ульянова Єлизавета Сергіївна", "yelyzaveta.ulianova@uni.ua", "inf42"),
+    S("Фоменко Роман Андрійович", "roman.fomenko@uni.ua", "inf42"),
+    S("Харченко Ганна Вадимівна", "hanna.kharchenko@uni.ua", "inf42"),
+  ];
+
   console.log("Fetching students for teacher", teacherId);
-  const S = (name: string, email: string, groupId: string, subgroup?: "a"|"b") =>
-    ({ id: uid(), name, email, groupId, subgroup });
-
   return ok([
-    // КН-11
-    S("Анна І.",  "anna.i@uni.ua",  "g11", "a"),
-    S("Богдан О.", "bohdan.o@uni.ua","g11", "a"),
-    S("Віктор П.", "viktor.p@uni.ua","g11", "b"),
-    S("Галина Д.", "halyna.d@uni.ua","g11", "b"),
-    // КН-12
-    S("Дмитро Л.","dmytro.l@uni.ua","g12", "a"),
-    S("Єва С.",   "yeva.s@uni.ua", "g12", "a"),
-    S("Жанна М.", "zhanna.m@uni.ua","g12", "b"),
-    S("Зорян К.", "zoryan.k@uni.ua","g12", "b"),
-
-    // КН-21
-    S("Іван Т.",  "ivan.t@uni.ua", "g21", "a"),
-    S("Катря Р.", "katrya.r@uni.ua","g21", "b"),
-    // КН-22
-    S("Леся Н.",  "lesya.n@uni.ua", "g22", "a"),
-    S("Мирон Ф.", "myron.f@uni.ua", "g22", "b"),
-    // КН-23
-    S("Надія Ч.", "nadiya.ch@uni.ua","g23", "a"),
-    S("Олег Ш.",  "oleh.sh@uni.ua", "g23", "b"),
-
-    // КН-41
-    S("Павло Ю.", "pavlo.y@uni.ua", "g41"),
-    S("Роксолана В.","roksolana.v@uni.ua","g41"),
-    // КН-42
-    S("Софія Г.", "sofia.h@uni.ua", "g42"),
-    S("Тарас Ж.", "taras.zh@uni.ua","g42"),
+    ...ips11a, ...ips11b,
+    ...kn21a,  ...kn21b,
+    ...pm41,
+    ...inf42,
   ]);
-}
-
-export async function createAssignment(task: Omit<HomeworkTask, "id" | "createdAt">): Promise<HomeworkTask> {
-  return ok({ ...task, id: uid(), createdAt: new Date().toISOString() });
 }
