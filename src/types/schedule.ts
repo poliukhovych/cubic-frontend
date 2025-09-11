@@ -5,16 +5,18 @@ export type WeekParity = "even" | "odd" | "any";
 
 export type GroupRef = { id: Id; name: string; subgroup?: "a" | "b" | null };
 
+// src/types/schedule.ts
 export type Lesson = {
-  id: Id;
-  weekday: 1|2|3|4|5|6|7; // 1=Mon
-  time: { start: string; end: string }; // "08:30"
+  id: string;
+  weekday: 1|2|3|4|5|6|7;
+  time: { start: string; end: string };
   subject: string;
-  location?: string;
-  teacherId?: Id;
-  group: GroupRef;
-  parity?: WeekParity; // якщо "even"/"odd", показувати лише у відповідний тиждень
+  location?: string | null;
+  group: { id: string; name: string; subgroup?: "a"|"b"|null };
+  parity?: "any" | "even" | "odd";
+  meetingUrl?: string;     // 🔹 NEW: посилання на Google Meet / Zoom
 };
+
 
 export type StudentSchedule = {
   studentId: Id;

@@ -66,7 +66,7 @@ export async function fetchTeacherSchedule(teacherId: string): Promise<TeacherSc
     L(2, 3, "Медіаконтроль (лаб.)", G12b, "лаб. 1-06", "any"),
 
     // Чт: КН-11 (зміна підгруп по парності)
-    L(4, 1, "Медіаконтроль (семінар)", G11a, "ауд. 207", "even"),
+    L(4, 1, "Медіаконтроль (лаб.)", G11a, "ауд. 207", "even"),
     L(4, 1, "Медіаконтроль (семінар)", G11b, "ауд. 208", "odd"),
 
     // ===== 2 курс: ООП (поділено на 2 підгрупи в 3 групах) =====
@@ -102,6 +102,7 @@ export async function fetchTeacherSchedule(teacherId: string): Promise<TeacherSc
 
 export async function fetchMyStudents(teacherId: string): Promise<Student[]> {
   // Набросали побільше студентів по групах/підгрупах
+  console.log("Fetching students for teacher", teacherId);
   const S = (name: string, email: string, groupId: string, subgroup?: "a"|"b") =>
     ({ id: uid(), name, email, groupId, subgroup });
 

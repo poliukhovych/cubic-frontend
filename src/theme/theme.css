@@ -98,7 +98,7 @@ html[data-theme="dark"] {
   --aurora-3: rgba(37, 99, 235, 0.35);   /* blue-600 (глибина) */
 
   /* швидкості та розміри (можеш крутити) */
-  --aurora-size: 60vmax;
+  --aurora-size: 100vmax;
   --aurora-speed-1: 28s;
   --aurora-speed-2: 32s;
   --aurora-speed-3: 36s;
@@ -169,7 +169,6 @@ html[data-theme="dark"] {
 
 /* === Aurora: multi-blobs + chaotic drift === */
 :root{
-  --aurora-size: 56vmax; /* базовий діаметр кулі */
   --aurora-1: rgba(110, 168, 254, 0.4); /* #6ea8fe */
   --aurora-2: rgba(34,211,238,0.4);  /* cyan-400 */
   --aurora-3: rgba(56,189,248,.4);  /* sky-400 */
@@ -254,6 +253,9 @@ html[data-theme="dark"]{
 @media (max-width: 768px){
   .aurora__blob{ opacity:.65; }
   .aurora__blob:nth-child(n+6){ display:none; } /* залишаємо 5 */
+  :root {
+    --aurora-size: 130vmax; /* ×3 тільки на мобілках */
+  }
 }
 
 /* Reduced motion */
@@ -278,5 +280,14 @@ html[data-theme="dark"]{
   backdrop-filter: blur(8px);
 }
 
+@utility glasscardToday {
+  @apply border relative;
 
+  /* трішки щільніший фон і тепліший бордер */
+  background-color: rgb(from var(--card) r g b / 0.60);
+  border-color: color-mix(in oklab, var(--primary), transparent 55%);
+  box-shadow: 0 0 36px rgba(0, 0, 0, 0.18);
 
+  /* делікатний індикатор зліва */
+  outline: 0px solid transparent;
+}

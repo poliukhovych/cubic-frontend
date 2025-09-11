@@ -23,7 +23,7 @@ const Header: React.FC = () => {
     >
     <div
   className={cls(
-    "mt-4 rounded-2xl glasscard px-6 py-5 flex items-center justify-between relative",
+    "mt-4 rounded-2xl glasscard backdrop-blur-sm px-6 py-5 flex items-center justify-between relative",
     "header-mount",
     mounted && "header-mount--in"
   )}
