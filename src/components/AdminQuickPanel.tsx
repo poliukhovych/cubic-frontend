@@ -1,6 +1,6 @@
 // src/components/AdminQuickPanel.tsx
 import React, { useEffect, useState } from "react";
-import { fetchAdminStats } from "@/lib/fakeApi/admin";
+import { fetchAdminStats, pushAdminChange } from "@/lib/fakeApi/admin";
 import { Users, BookOpen } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import ViewModeToggle from "./ViewModeToggle";
@@ -57,7 +57,21 @@ const AdminQuickPanel: React.FC = () => {
           </button>
         ) : (
           <div className="grid gap-3 sm:grid-cols-3">
-            <button className="btn py-3 rounded-2xl hover-shadow" onClick={() => flash("solve is done")}>solve</button>
+            <button
+  className="btn py-3 rounded-2xl hover-shadow"
+  onClick={async () => {
+    await pushAdminChange({
+      entity: "schedule",
+      action: "updated",
+      title: "Швидке редагування розкладу (solve)",
+      actor: "Admin",
+    });
+    flash("solve is done");
+  }}
+>
+  solve
+</button>
+
             <button className="btn py-3 rounded-2xl hover-shadow" onClick={() => flash("optimize is done")}>optimize</button>
             <button className="btn py-3 rounded-2xl hover-shadow" onClick={() => nav("/admin/logs")}>logs</button>
           </div>

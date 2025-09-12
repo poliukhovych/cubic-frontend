@@ -2,6 +2,7 @@
 import type { Id, ISODate } from "./common";
 
 export type WeekParity = "even" | "odd" | "any";
+export type Parity = "any" | "even" | "odd";
 
 export type GroupRef = { id: Id; name: string; subgroup?: "a" | "b" | null };
 
@@ -33,4 +34,29 @@ export type DaySchedule = { weekday: Lesson["weekday"]; lessons: Lesson[] };
 
 export type ScheduleUpdate = {
   effectiveFrom: ISODate;
+};
+
+
+/** Один запис у розкладі факультету */
+export type FacultyLesson = {
+  id: string;
+  weekday: 1 | 2 | 3 | 4 | 5 | 6;        // 1=Пн ... 6=Сб
+  pair: 1 | 2 | 3 | 4;                    // № пари (ми обмежилися 4 на день)
+  parity: Parity;                         // any / even / odd
+  time: { start: string; end: string };
+  course: 1 | 2 | 3 | 4;                  // бакалаври 1–4; (для магістрів використовуємо 1|2)
+  level: "bachelor" | "master";
+
+  /** НОВЕ: код/назва групи, напр. "КН-11", "ПІ-12" тощо */
+  group: string;
+
+  /** (legacy) спеціальність — залишено для сумісності із сідами; можна поступово прибрати */
+  speciality?: string;
+
+  subject: string;
+  teacher: string;
+  location?: string;
+
+  /** 📌 якщо true — пара «запінена» і не рухається drag-n-drop'ом */
+  pinned?: boolean;
 };
