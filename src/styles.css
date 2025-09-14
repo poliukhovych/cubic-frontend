@@ -1,8 +1,5 @@
-/* src/styles.css */
 @import "tailwindcss";
-body {
-  font-family: Helvetica;
-}
+body { font-family: Helvetica; }
 
 /* ---------- Токени теми ---------- */
 :root {
@@ -25,7 +22,7 @@ body {
   --ring:    #6ea8fe66;
 
   /* Radii / Shadows */
-  --r: 1rem;
+  --r: 3rem;
   --shadow: 0 0 10px rgba(0,0,0,.1);
 
   /* Aurora defaults */
@@ -38,8 +35,16 @@ body {
   --aurora-6: rgba(16,185,129,0.2);
   --aurora-7: rgba(147,197,253,0.1);
   --aurora-8: rgba(59,130,246,0.2);
-}
 
+  /* 🧷 фон для sticky-колонок */
+  --surface-1: color-mix(in oklab, var(--card), transparent 10%);
+
+  --sticky-z: 80;                 /* пріоритет липких колонок */
+  --col-day: 3rem;                /* 64px */
+  --col-pair: 3rem;               /* 48px */
+  --col-time: 3rem;               /* 112px */
+
+}
 html[data-theme="light"] {
   --surface: #f7f7fb;
   --surface-2: #ffffff;
@@ -50,9 +55,9 @@ html[data-theme="light"] {
   --primary: rgb(113, 167, 253);
   --primary-contrast: #ffffff;
   --ring: #3b82f666;
-  --hero-dim: rgba(0, 0, 0, 0.288); 
+  --hero-dim: rgba(0, 0, 0, 0.288);
+  --surface-1: color-mix(in oklab, var(--card), transparent 8%);
 }
-
 html[data-theme="dark"] {
   --surface: #0b0b0c;
   --surface-2: #121214;
@@ -68,6 +73,7 @@ html[data-theme="dark"] {
   --aurora-1: rgba(110,168,254,0.1);
   --aurora-2: rgba(34,211,238,0.2);
   --aurora-3: rgba(99,102,241,0.3);
+  --surface-1: color-mix(in oklab, var(--card), transparent 12%);
 }
 
 /* ---------- База ---------- */
@@ -113,27 +119,12 @@ button { cursor: pointer; }
 }
 
 /* ---------- Aurora фон ---------- */
-.aurora{
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  overflow: clip;
-  contain: layout paint size;
+.aurora{ position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: clip; contain: layout paint size;
   -webkit-mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
-  mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
-}
-.aurora__blob{
-  position: absolute;
-  width: var(--aurora-size);
-  height: var(--aurora-size);
-  border-radius: 9999px;
-  opacity: .75;
-  background: radial-gradient(closest-side, var(--clr) 0%, rgba(0,0,0,0) 68%);
-  will-change: transform;
-  animation: var(--motion, chaos-1) var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate;
-  transform: translate3d(0,0,0);
-}
+  mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%); }
+.aurora__blob{ position: absolute; width: var(--aurora-size); height: var(--aurora-size); border-radius: 9999px; opacity: .75;
+  background: radial-gradient(closest-side, var(--clr) 0%, rgba(0,0,0,0) 68%); will-change: transform;
+  animation: var(--motion, chaos-1) var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate; transform: translate3d(0,0,0); }
 .aurora__blob--1{ --clr: var(--aurora-1); left:-12vmax; top:-14vmax;   --motion: chaos-1; --dur:26s; --delay:-2s; }
 .aurora__blob--2{ --clr: var(--aurora-2); right:-14vmax; top:12vmax;   --motion: chaos-2; --dur:30s; --delay:-6s; }
 .aurora__blob--3{ --clr: var(--aurora-3); left:18vmax; bottom:-16vmax; --motion: chaos-3; --dur:34s; --delay:-10s;}
@@ -142,171 +133,266 @@ button { cursor: pointer; }
 .aurora__blob--6{ --clr: var(--aurora-6); right:22vmax; top:-10vmax;   --motion: chaos-3; --dur:28s; --delay:-8s; }
 .aurora__blob--7{ --clr: var(--aurora-7); left:32vmax; top:18vmax;     --motion: chaos-4; --dur:38s; --delay:-12s;}
 .aurora__blob--8{ --clr: var(--aurora-8); right:-6vmax; bottom:28vmax; --motion: chaos-1; --dur:24s; --delay:-16s; }
-
-@keyframes chaos-1 {
-  0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+@keyframes chaos-1 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
   30%{transform:translate3d(8vmax,-6vmax,0) scale(1.06) rotate(8deg)}
   60%{transform:translate3d(-6vmax,7vmax,0) scale(1.03) rotate(-10deg)}
-  100%{transform:translate3d(10vmax,4vmax,0) scale(1.08) rotate(6deg)}
-}
-@keyframes chaos-2 {
-  0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  100%{transform:translate3d(10vmax,4vmax,0) scale(1.08) rotate(6deg)} }
+@keyframes chaos-2 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
   25%{transform:translate3d(-9vmax,5vmax,0) scale(1.10) rotate(-6deg)}
   55%{transform:translate3d(6vmax,-8vmax,0) scale(1.04) rotate(12deg)}
-  100%{transform:translate3d(-7vmax,-4vmax,0) scale(1.09) rotate(-4deg)}
-}
-@keyframes chaos-3 {
-  0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  100%{transform:translate3d(-7vmax,-4vmax,0) scale(1.09) rotate(-4deg)} }
+@keyframes chaos-3 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
   35%{transform:translate3d(11vmax,3vmax,0) scale(1.05) rotate(14deg)}
   70%{transform:translate3d(-8vmax,-7vmax,0) scale(1.02) rotate(-8deg)}
-  100%{transform:translate3d(5vmax,10vmax,0) scale(1.07) rotate(10deg)}
-}
-@keyframes chaos-4 {
-  0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  100%{transform:translate3d(5vmax,10vmax,0) scale(1.07) rotate(10deg)} }
+@keyframes chaos-4 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
   20%{transform:translate3d(7vmax,9vmax,0) scale(1.12) rotate(18deg)}
   50%{transform:translate3d(-10vmax,-5vmax,0) scale(1.03) rotate(-12deg)}
-  100%{transform:translate3d(6vmax,-9vmax,0) scale(1.09) rotate(6deg)}
-}
-
-@media (max-width: 768px){
-  .aurora__blob{ opacity:.65; }
-  .aurora__blob:nth-child(n+6){ display:none; }
-  :root { --aurora-size: 130vmax; }
-}
-@media (prefers-reduced-motion: reduce){
-  .aurora__blob{ animation:none; transform:none; }
-}
+  100%{transform:translate3d(6vmax,-9vmax,0) scale(1.09) rotate(6deg)} }
+@media (max-width: 768px){ .aurora__blob{ opacity:.65; } .aurora__blob:nth-child(n+6){ display:none; } :root { --aurora-size: 130vmax; } }
+@media (prefers-reduced-motion: reduce){ .aurora__blob{ animation:none; transform:none; } }
 
 /* ---------- Дизайн-система (утиліти) ---------- */
-/* Cards */
-.card {
-  @apply rounded-2xl border;
-  border-color: color-mix(in oklab, var(--border), transparent 35%);
-  background-color: rgb(from var(--card) r g b / 0.35);
-  box-shadow: var(--shadow);
-}
-.glasscard {
-  @apply border rounded-2xl backdrop-blur-md;
-  background-color: rgb(from var(--card) r g b / 0.40);
-  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12);
-  border-color: color-mix(in oklab, var(--border), transparent 35%);
-}
+.card { @apply rounded-2xl border; border-color: color-mix(in oklab, var(--border), transparent 35%); background-color: rgb(from var(--card) r g b / 0.35); box-shadow: var(--shadow); }
+.glasscard { @apply border rounded-2xl backdrop-blur-md; background-color: rgb(from var(--card) r g b / 0.40); box-shadow: 0 0 28px rgba(0, 0, 0, 0.12); border-color: color-mix(in oklab, var(--border), transparent 35%); }
+.glasscardnorounded { @apply border-t backdrop-blur-md; background-color: rgb(from var(--card) r g b / 0.40); box-shadow: 0 0 28px rgba(0, 0, 0, 0.12); border-color: color-mix(in oklab, var(--border), transparent 35%); }
+.glasscardMd { @apply border rounded-2xl backdrop-blur-md; background-color: rgb(from var(--card) r g b / 0.50); box-shadow: 0 0 36px rgba(0, 0, 0, 0.14); border-color: color-mix(in oklab, var(--border), transparent 30%); backdrop-filter: blur(8px); }
+.glasscardToday { @apply border rounded-2xl relative; background-color: rgb(from var(--card) r g b / 0.60); border-color: color-mix(in oklab, var(--primary), transparent 30%); box-shadow: 0 0 36px rgba(0, 0, 0, 0.18); }
 
-.glasscardnorounded {
-  @apply border-t backdrop-blur-md;
-  background-color: rgb(from var(--card) r g b / 0.40);
-  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12);
-  border-color: color-mix(in oklab, var(--border), transparent 35%);
-}
-
-.glasscardMd {
-  @apply border rounded-2xl backdrop-blur-md;
-  background-color: rgb(from var(--card) r g b / 0.50);
-  box-shadow: 0 0 36px rgba(0, 0, 0, 0.14);
-  border-color: color-mix(in oklab, var(--border), transparent 30%);
-  backdrop-filter: blur(8px);
-}
-.glasscardToday {
-  @apply border rounded-2xl relative;
-  background-color: rgb(from var(--card) r g b / 0.60);
-  border-color: color-mix(in oklab, var(--primary), transparent 30%);
-  box-shadow: 0 0 36px rgba(0, 0, 0, 0.18);
-}
-
-/* Buttons */
-.btn {
-  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors select-none;
-  background-color: rgb(from var(--surface-2) r g b / 0.4);
-  color: var(--text);
-  border: 1px solid color-mix(in oklab, var(--border), transparent 20%);
-}
+/* Buttons / Inputs / micro */
+.btn { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors select-none;
+  background-color: rgb(from var(--surface-2) r g b / 0.4); color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--border), transparent 20%); }
 .btn:hover { background-color: rgb(from var(--surface-2) r g b / 0.75); }
 .btn:disabled { opacity: .6; pointer-events: none; }
-.btn-primary {
-  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors;
-  background-color: var(--primary);
-  color: var(--primary-contrast);
-  border: 1px solid transparent;
-}
+.btn-primary { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors; background-color: var(--primary); color: var(--primary-contrast); border: 1px solid transparent; }
 .btn-primary:hover { filter: brightness(1.03); }
-
-/* Inputs / Selects */
-.input {
-  @apply w-full rounded-2xl px-3 py-2 border outline-none;
-  background-color: var(--surface-2);
-  border-color: color-mix(in oklab, var(--border), transparent 35%);
-  color: var(--text);
-}
+.input { @apply w-full rounded-2xl px-3 py-2 border outline-none; background-color: var(--surface-2); border-color: color-mix(in oklab, var(--border), transparent 35%); color: var(--text); }
 .input:focus { box-shadow: 0 0 0 3px var(--ring); }
-
-/* Micro utilities */
 .text-primary { color: var(--primary); }
 .smooth { @apply transition-all; }
-.hover-lift:hover { transform: translateY(-1px); }
+.hover-lift:hover { transform: translateY(-1px);}
 .hover-shadow:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
 .card-smooth { @apply transition-shadow; }
 .pressable:active { transform: translateY(0.5px); }
 
-/* --- iOS Safari glass fix (без зміни теми) --- */
-/* iOS: для елементів, де вже Є blur (glasscard / glasscardMd / glasscardnorounded) */
-.glasscard,
-.glasscardnorounded {
-  /* tailwind backdrop-blur-md ≈ blur(12px) */
+/* --- iOS Safari glass fix --- */
+.glasscard, .glasscardnorounded { -webkit-backdrop-filter: blur(12px); background-clip: padding-box; -webkit-mask-image: -webkit-radial-gradient(white, black); transform: translateZ(0); will-change: transform; isolation: isolate; overflow: visible; }
+.glasscardMd { -webkit-backdrop-filter: blur(8px); background-clip: padding-box; -webkit-mask-image: -webkit-radial-gradient(white, black); transform: translateZ(0); will-change: transform; isolation: isolate; overflow: visible; }
+.glasscardToday { background-clip: padding-box; -webkit-mask-image: -webkit-radial-gradient(white, black); transform: translateZ(0); will-change: transform; isolation: isolate; overflow: visible; }
+.header-mount, .header-mount--in { -webkit-backface-visibility: hidden; backface-visibility: hidden; perspective: 1000px; contain: paint; }
+html[data-theme="light"] .glasscard, html[data-theme="light"] .glasscardMd, html[data-theme="light"] .glasscardnorounded { border-color: color-mix(in oklab, var(--border), transparent 20%); }
+@supports (-webkit-touch-callout: none) { .glasscard, .glasscardnorounded { -webkit-backdrop-filter: blur(12px); } .glasscardMd { -webkit-backdrop-filter: blur(8px); } }
+
+/* ---------- Градієнт-роздільник початку дня ---------- */
+:root{
+  --dayline-start: color-mix(in oklab, var(--primary) 40%, transparent);
+  --dayline-mid:   color-mix(in oklab, var(--primary) 70%, transparent);
+  --dayline-end:   color-mix(in oklab, var(--primary) 40%, transparent);
+}
+html[data-theme="light"]{
+  --dayline-start: color-mix(in oklab, var(--primary) 50%, transparent);
+  --dayline-mid:   color-mix(in oklab, var(--primary) 85%, transparent);
+  --dayline-end:   color-mix(in oklab, var(--primary) 50%, transparent);
+}
+.dayline {
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--dayline-start) 0%, var(--dayline-mid) 50%, var(--dayline-end) 100%);
+  box-shadow: 0 0 24px color-mix(in oklab, var(--dayline-mid), transparent 50%);
+}
+
+/* ---------- Sticky-колонки (фіксована ширина + фон + без щілин) ---------- */
+.sticky-base{
+  position: sticky;
+  z-index: var(--sticky-z);
+  background-color: var(--surface-1);
+  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  /* залишаємо ваш backdrop-blur-md як є; -webkit- варіант лише для Safari */
   background-clip: padding-box;
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
-  transform: translateZ(0);
   will-change: transform;
-  isolation: isolate;
-  overflow: visible;
+  transform: translateZ(0);
 }
-.glasscardMd {
-  /* у вас явно задано blur(8px) — зберігаємо його */
-  -webkit-backdrop-filter: blur(8px);
+
+/* правий «патч», що перекриває субпіксельні щілини під час горизонтального скролу */
+.sticky-base::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:-1px;     /* трохи заходить на сусідню колонку */
+  width:2px;
+  bottom:0;
+  background: var(--surface-1);
+  pointer-events:none;
+}
+
+/* вигляд заголовків і клітинок перших трьох колонок */
+.th-sticky {
+  padding: .5rem;
+  color: var(--muted);
+  text-align: center;        /* горизонтально по центру */
+  vertical-align: middle;    /* вертикально по центру */
+  border-right: 1px solid color-mix(in oklab, var(--border), transparent 20%);
+}
+
+.td-sticky {
+  padding: .5rem;
+  text-align: center;        /* горизонтально по центру */
+  vertical-align: middle;    /* вертикально по центру */
+  border-right: 1px solid color-mix(in oklab, var(--border), transparent 20%);
+}
+
+
+/* фіксовані ширини та позиції */
+.th-day, .td-sticky.th-day { width: var(--col-day);  min-width: var(--col-day);  max-width: var(--col-day);  left: 0; }
+.th-pair,.td-sticky.th-pair{ width: var(--col-pair); min-width: var(--col-pair); max-width: var(--col-pair); left: var(--col-day); }
+.th-time,.td-sticky.th-time{ width: var(--col-time); min-width: var(--col-time); max-width: var(--col-time);
+  left: calc(var(--col-day) + var(--col-pair)); }
+
+/* застосувати sticky-базу до всіх трьох */
+.th-day, .th-pair, .th-time,
+.td-sticky.th-day, .td-sticky.th-pair, .td-sticky.th-time{
+  position: sticky; /* дублюємо явно */
+}
+.th-day.sticky-base, .th-pair.sticky-base, .th-time.sticky-base,
+.td-sticky.th-day.sticky-base, .td-sticky.th-pair.sticky-base, .td-sticky.th-time.sticky-base{}
+
+/* 🔽 важливо: картки під sticky-колонками не повинні «вилазити» тінями */
+.glasscard{ position: relative; z-index: 0; }
+
+
+
+/* =====================  Fancy Scrollbars  ===================== */
+/* Токени (можеш підкрутити кольори) */
+:root{
+  --scrollbar-size: 10px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track: color-mix(in oklab, var(--card), transparent 100%);
+  --scrollbar-thumb: color-mix(in oklab, var(--primary), transparent 65%);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--primary), transparent 45%);
+  --scrollbar-thumb-active: color-mix(in oklab, var(--primary), transparent 30%);
+}
+html[data-theme="light"]{
+  --scrollbar-track: color-mix(in oklab, var(--card), transparent 100%);
+  --scrollbar-thumb: color-mix(in oklab, var(--primary), transparent 55%);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--primary), transparent 35%);
+  --scrollbar-thumb-active: color-mix(in oklab, var(--primary), transparent 20%);
+}
+
+/* ---------- Глобально для всіх скролів ---------- */
+/* Firefox */
+*{
+  scrollbar-width: thin; /* auto|thin|none */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* WebKit (Chrome/Edge/Safari/Opera) */
+*::-webkit-scrollbar{
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: transparent; /* щоб не мигтіло */
+}
+*::-webkit-scrollbar-track{
+  background: var(--scrollbar-track);
+  border-radius: var(--scrollbar-radius);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border), transparent 40%);
+}
+*::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--scrollbar-thumb), transparent 10%),
+    var(--scrollbar-thumb)
+  );
+  border-radius: var(--scrollbar-radius);
+  border: 2px solid transparent;          /* робить «капсулу» */
   background-clip: padding-box;
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
-  overflow: visible;
+}
+*::-webkit-scrollbar-thumb:hover{
+  background: var(--scrollbar-thumb-hover);
+}
+*::-webkit-scrollbar-thumb:active{
+  background: var(--scrollbar-thumb-active);
+}
+*::-webkit-scrollbar-corner{
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-button{
+  display:none;
+  width:0;
+  height:0;
 }
 
-/* ВАЖЛИВО: .glasscardToday blur НЕ додаємо (там його і не було) */
-.glasscardToday {
-  background-clip: padding-box;
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
-  overflow: visible;
+
+/* Трохи стабільності макету: смуга не «стрибає» при появі */
+.scrollbar-stable{
+  scrollbar-gutter: stable both-edges;
 }
 
-/* якщо скляна картка всередині елементів з анімацією трансформацій (хедер) */
-.header-mount,
-.header-mount--in {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  perspective: 1000px;
-  contain: paint; /* не впливає на translateY */
+/* ---------- Опційно: товстіший на hover лише в контейнері ---------- */
+.scrollarea{
+  /* старт трохи тонший, щоб не відволікав */
+  --scrollbar-size: 8px;
+  position: relative;
+}
+.scrollarea:hover{ --scrollbar-size: 12px; }
+
+/* ---------- Опційно: вимкнути кастом глабально для конкретного вузла ---------- */
+.scrollbar-default{
+  scrollbar-width: auto;
+    scrollbar-color: auto; /* <- додали */
+
+}
+.scrollbar-default::-webkit-scrollbar,
+.scrollbar-default *::-webkit-scrollbar{
+  width: initial; height: initial; background: initial;
+}
+.scrollbar-default::-webkit-scrollbar-track,
+.scrollbar-default::-webkit-scrollbar-thumb,
+.scrollbar-default::-webkit-scrollbar-corner{
+  background: initial; box-shadow: initial; border-radius: initial; border: initial;
 }
 
-/* точкове підсилення контрасту бордера в light, щоб у Safari не «сіріло» */
-html[data-theme="light"] .glasscard,
-html[data-theme="light"] .glasscardMd,
-html[data-theme="light"] .glasscardnorounded {
-  border-color: color-mix(in oklab, var(--border), transparent 20%);
+/* Анімація без зайвого руху для тих, хто не любить motion */
+@media (prefers-reduced-motion: reduce){
+  .scrollarea:hover{ --scrollbar-size: 10px; }
 }
 
-/* необов'язково, але іноді лікує артефакт під фіксованою шапкою */
-@supports (-webkit-touch-callout: none) {
-  /* ті, що мають backdrop-blur-md (~12px) */
-  .glasscard,
-  .glasscardnorounded {
-    -webkit-backdrop-filter: blur(12px);
-  }
-  /* тут у тебе явно blur(8px) — зберігаємо */
-  .glasscardMd {
-    -webkit-backdrop-filter: blur(8px);
-  }
+
+/* ======= Суцільний заокруглений фон для перших 3 колонок ======= */
+.sticky-left{ position: relative; }
+
+/* Декоративний шар під клітинками */
+.sticky-left::before{
+  content: "";
+  position: sticky;
+  left: 0;
+  top: 0;
+  /* ширина трьох колонок */
+  width: calc(var(--col-day) + var(--col-pair) + var(--col-time));
+  /* висота = видима висота скрол-контейнера */
+  height: 100%;
+  /* фон та скло як у sticky-base */
+  background: var(--surface-1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  /* заокруглення лівого краю */
+  border-top-left-radius: var(--r);
+  border-bottom-left-radius: var(--r);
+  /* має бути під клітинками, але над рештою таблиці */
+  z-index: calc(var(--sticky-z) - 1);
+  pointer-events: none;
+  display: block;
+}
+
+/* Щоб не було «подвійного» фону — прозоримо самі sticky-клітинки всередині */
+.sticky-left .sticky-base{
+  background-color: transparent 70%;
+}
+.sticky-left .sticky-base::after{
+  /* прибираємо правий патч-піксель, бо фон вже суцільний */
+  background: transparent 70%;
+}
+.sticky-left::before{
+  box-shadow: inset -1px 0 0 color-mix(in oklab, var(--border), transparent 70%);
 }

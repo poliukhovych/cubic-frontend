@@ -1,4 +1,3 @@
-// src/lib/router.tsx
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -8,27 +7,26 @@ import RequireAnon from "@/components/RequireAnon";
 import AuthProcessing from "@/pages/AuthProcessing";
 import CompleteProfile from "@/pages/CompleteProfile";
 
-
 import StudentDashboard from "@/pages/student/StudentDashboard";
 import StudentSchedule from "@/pages/student/StudentSchedule";
 import StudentHomework from "@/pages/student/StudentHomework";
-
+import StudentGrades from "@/pages/student/StudentGrades"; // ✅ додано
 
 import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
 import TeacherSchedule from "@/pages/teacher/TeacherSchedule";
 import TeacherStudents from "@/pages/teacher/TeacherStudents";
-
 
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminTeachers from "@/pages/admin/AdminTeachers";
 import AdminSchedule from "@/pages/admin/AdminSchedule";
 import AdminLogs from "@/pages/admin/AdminLogs";
 import AdminArchive from "@/pages/admin/AdminArchive";
-import AdminStudents from "@/pages/admin/AdmineStudents"; 
-import AdminCourses from "@/pages/admin/AdminCourses"; 
+import AdminCourses from "@/pages/admin/AdminCourses";
+
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-
+import AdminStudents from "@/pages/admin/AdmineStudents";
+import StudentSubject from "@/pages/student/StudentSubject"; // ✅ нове
 
 export const router = createBrowserRouter(
   [
@@ -42,7 +40,6 @@ export const router = createBrowserRouter(
         { path: "auth/processing", element: <AuthProcessing /> },
         { path: "complete-profile", element: <CompleteProfile /> },
 
-
         {
           path: "student",
           element: (
@@ -55,9 +52,11 @@ export const router = createBrowserRouter(
             { path: "dashboard", element: <StudentDashboard /> },
             { path: "schedule", element: <StudentSchedule /> },
             { path: "homework", element: <StudentHomework /> },
+            { path: "grades", element: <StudentGrades /> }, // ✅ новий маршрут
+            { path: "subject/:subjectId", element: <StudentSubject /> },
+
           ],
         },
-
 
         {
           path: "teacher",
@@ -74,7 +73,6 @@ export const router = createBrowserRouter(
           ],
         },
 
-
         {
           path: "admin",
           element: (
@@ -90,10 +88,9 @@ export const router = createBrowserRouter(
             { path: "logs", element: <AdminLogs /> },
             { path: "archive", element: <AdminArchive /> },
             { path: "courses", element: <AdminCourses /> },
-            { path: "students", element: <AdminStudents /> }
+            { path: "students", element: <AdminStudents /> },
           ],
         },
-
 
         { path: "*", element: <Navigate to="/" replace /> },
       ],

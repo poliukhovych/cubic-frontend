@@ -1,4 +1,3 @@
-// src/components/FacultyScheduleTable.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
   fetchFacultySchedule,
@@ -32,7 +31,7 @@ const IconButton: React.FC<{ active?: boolean; onClick: () => void; title: strin
     onClick={onClick}
     className={[
       "rounded-md p-1 transition",
-      active ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]" : "hover:bg-[var(--surface-2)]"
+      active ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)] hover-lift" : "hover-lift hover:bg-[var(--surface-2)]"
     ].join(" ")}
   >
     {active ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
@@ -47,10 +46,10 @@ const CellCard: React.FC<{
 }> = ({ lesson, dense, onDragStart, onTogglePin }) => (
   <div
     className={[
-      "glasscard rounded-xl",
+      "glasscard rounded-xl m-1",
       dense ? "p-1.5 text-[12px]" : "p-2 text-sm",
       "flex flex-col gap-1",
-      lesson.pinned ? "opacity-90 cursor-not-allowed ring-1 ring-[var(--border)]" : "cursor-move hover-lift",
+      lesson.pinned ? "opacity-90 cursor-not-allowed ring-1 ring-[var(--border)]" : "cursor-move hover-lift hover-shadow",
     ].join(" ")}
     draggable={!lesson.pinned}
     onDragStart={(e) => {
@@ -138,7 +137,7 @@ const FacultyScheduleTable: React.FC = () => {
 
   const [dense, setDense] = useState(false);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(3); // скільки колонок показувати за раз
+  const [pageSize, setPageSize] = useState(10); // скільки колонок показувати за раз
 
   const [allLessons, setAllLessons] = useState<FacultyLesson[]>([]);
   const [dragging, setDragging] = useState<FacultyLesson | null>(null);
@@ -272,63 +271,66 @@ const FacultyScheduleTable: React.FC = () => {
         dense={dense} setDense={setDense}
       />
 
-      <div className="overflow-auto">
-        <table className="w-full border-collapse text-sm relative">
-          <thead>
-            <tr className="text-left">
-              {/* sticky перші 3 колонки */}
-              <th className="w-16 py-2 text-[var(--muted)] sticky left-0 bg-[var(--surface-1)] z-10">День</th>
-              <th className="w-12 py-2 text-[var(--muted)] sticky left-16 bg-[var(--surface-1)] z-10">Пара</th>
-              <th className="w-28 py-2 text-[var(--muted)] sticky left-[112px] bg-[var(--surface-1)] z-10">Час</th>
+<div className="overflow-auto scrollarea scrollbar-stable sticky-left">
+        <table className="w-full text-sm relative border-separate border-spacing-0">
+  <thead>
+    <tr className="text-left">
+      <th className="th-sticky th-day sticky-base">День</th>
+      <th className="th-sticky th-pair sticky-base">Пара</th>
+      <th className="th-sticky th-time sticky-base">Час</th>
+      {groups.map(g => (
+        <th key={g} className="py-2 text-[var(--muted)] min-w-[220px] text-center">{g}</th>
+      ))}
+    </tr>
+  </thead>
+  <tbody /* ... */>
+    {WEEKDAYS.map(weekday => (
+      <React.Fragment key={weekday}>
+        <tr>
+          <td colSpan={3 + groups.length} className="p-0"><div className="dayline" /></td>
+        </tr>
 
-              {groups.map(g => (
-                <th key={g} className="py-2 text-[var(--muted)] min-w-[220px]">{g}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody style={{ borderColor: "color-mix(in oklab, var(--border), transparent 50%)" }}>
-            {WEEKDAYS.map((weekday) =>
-              PAIRS.map((pair, pairIdx) => (
-                <tr key={`${weekday}-${pair}`} className="border-t"
-                    style={{ borderColor: "color-mix(in oklab, var(--border), transparent 60%)" }}>
-                  {pairIdx === 0 && (
-                    <td className="py-2 align-top sticky left-0 bg-[var(--surface-1)] z-10" rowSpan={PAIRS.length}>{DAYS[weekday]}</td>
-                  )}
-                  <td className="py-2 align-top sticky left-16 bg-[var(--surface-1)] z-10">{pair}</td>
-                  <td className="py-2 align-top sticky left-[112px] bg-[var(--surface-1)] z-10">
-                    {TIMES[pair].start} – {TIMES[pair].end}
-                  </td>
-
-                  {groups.map(group => {
-                    const items = getCell(weekday, pair, group);
-                    return (
-                      <td
-                        key={group}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => onDropToCell(e, { weekday, pair, group })}
-                        className="py-2 align-top"
-                      >
-                        {items.length > 0 ? (
-                          items.map(l => (
-                            <CellCard
-                              key={l.id}
-                              lesson={l}
-                              dense={dense}
-                              onDragStart={setDragging}
-                              onTogglePin={togglePin}
-                            />
-                          ))
-                        ) : (
-                          <EmptyDropZone dense={dense} onDrop={() => dragging && moveLesson(dragging.id, { weekday, pair, group })} />
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
+        {PAIRS.map((pair, pairIdx) => (
+          <tr key={`${weekday}-${pair}`} className="border-t"
+              style={{ borderColor: "color-mix(in oklab, var(--border), transparent 60%)" }}>
+            {pairIdx === 0 && (
+              <td className="td-sticky th-day sticky-base" rowSpan={PAIRS.length}>
+                {DAYS[weekday]}
+              </td>
             )}
-          </tbody>
-        </table>
+            <td className="td-sticky th-pair sticky-base">{pair}</td>
+
+            <td className="td-sticky th-time sticky-base">
+              <div className="flex flex-col leading-tight">
+                <span>{TIMES[pair].start}</span>
+                <span className="text-[var(--muted)]">—</span>
+                <span>{TIMES[pair].end}</span>
+              </div>
+            </td>
+
+            {groups.map(group => {
+              const items = getCell(weekday, pair, group);
+              return (
+                <td key={group} onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => onDropToCell(e, { weekday, pair, group })}
+                    className="py-2 align-top">
+                  {items.length > 0 ? items.map(l => (
+                    <CellCard key={l.id} lesson={l} dense={dense}
+                              onDragStart={setDragging} onTogglePin={togglePin}/>
+                  )) : (
+                    <EmptyDropZone dense={dense}
+                                   onDrop={() => dragging && moveLesson(dragging.id, { weekday, pair, group })}/>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </React.Fragment>
+    ))}
+  </tbody>
+</table>
+
       </div>
 
       <div className="mt-3 flex items-center gap-3">

@@ -8,7 +8,7 @@ export type HomeworkTask = {
   dueDate: string;              // YYYY-MM-DD
   groupId: string;
   teacherId: string;
-  classroomUrl: string;
+  classroomUrl?: string;
   files?: { id: string; url: string; title?: string }[];
 };
 

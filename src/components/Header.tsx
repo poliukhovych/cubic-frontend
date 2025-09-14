@@ -35,7 +35,8 @@ const Header: React.FC = () => {
           {user?.role === "student" && (
             <>
               <NavLink to="/student/schedule">Мій розклад</NavLink>
-              <NavLink to="/student/homework">Домашнє</NavLink>
+              <NavLink to="/student/homework">Домашні завдання</NavLink>
+               <NavLink to="/student/grades">Оцінки</NavLink>
             </>
           )}
           {user?.role === "teacher" && (
