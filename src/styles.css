@@ -396,3 +396,16 @@ html[data-theme="light"]{
 .sticky-left::before{
   box-shadow: inset -1px 0 0 color-mix(in oklab, var(--border), transparent 70%);
 }
+
+html.theme-switching *, 
+html.theme-switching *::before, 
+html.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+  /* Safari інколи мерехтить через blur */
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Рекомендується явно вказати підтримку обох колірних схем для нативних контролів */
+:root { color-scheme: light dark; }

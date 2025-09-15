@@ -25,8 +25,8 @@ const Header: React.FC = () => {
       <div className={cls("mt-4 glasscard px-6 py-5 flex items-center justify-between relative")}>
         {/* Logo (left) */}
         <Link to="/" className="flex items-center gap-3 font-semibold text-xl">
-          <img src={favicon} alt="Logo" className="h-8 w-8" />
-          <span>Cubic Helper</span>
+          <img src={favicon} alt="Logo" className=" hover-lift h-8 w-8" />
+          <span className="hover-lift">Cubic Helper</span>
         </Link>
 
         {/* Nav (center) */}
@@ -34,15 +34,15 @@ const Header: React.FC = () => {
 
           {user?.role === "student" && (
             <>
-              <NavLink to="/student/schedule">Мій розклад</NavLink>
-              <NavLink to="/student/homework">Домашні завдання</NavLink>
-               <NavLink to="/student/grades">Оцінки</NavLink>
+              <NavLink className="hover-lift" to="/student/schedule">Мій розклад</NavLink>
+              <NavLink className="hover-lift" to="/student/homework">Домашні завдання</NavLink>
+               <NavLink className="hover-lift" to="/student/grades">Оцінки</NavLink>
             </>
           )}
           {user?.role === "teacher" && (
             <>
-              <NavLink to="/teacher/schedule">Мій розклад</NavLink>
-              <NavLink to="/teacher/students">Студенти</NavLink>
+              <NavLink className="hover-lift" to="/teacher/schedule">Мій розклад</NavLink>
+              <NavLink className="hover-lift" to="/teacher/students">Студенти</NavLink>
             </>
           )}
           {/* {user?.role === "admin" && (
@@ -57,7 +57,7 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-3 text-lg">
           {user ? (
             <button
-              className="btn font-semiboldtext-lg px-4 py-2"
+              className="btn font-semiboldtext-lg px-4 py-2 hover-lift"
               onClick={() => {
                 logout();
                 nav("/");
@@ -66,13 +66,20 @@ const Header: React.FC = () => {
               Вийти
             </button>
           ) : (
-            <Link to="/login" className="btn text-lg px-4 py-2">
+            <Link to="/login" className="btn text-lg px-4 py-2 hover-lift">
               Увійти
             </Link>
           )}
 
           {/* Кнопка перемикання теми (збереження виконує ThemeProvider) */}
-          <button onClick={toggle} className="btn p-2" aria-label="Перемкнути тему">
+<button
+  onClick={() => {
+    toggle();             // перемикає тему (і зберігає у localStorage)
+    window.location.reload(); // перезавантажує сторінку
+  }}
+  className="btn p-2 hover-lift"
+  aria-label="Перемкнути тему"
+>
             {theme === "light" ? <Moon className="h-7 w-7" /> : <Sun className="h-7 w-7" />}
           </button>
         </div>

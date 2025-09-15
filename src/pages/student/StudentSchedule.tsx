@@ -29,6 +29,7 @@ const weekStart = React.useMemo(
   );
 
   const rangeText = React.useMemo(() => formatWeekRange(weekStart), [weekStart]);
+  const currentWeek = React.useMemo(() => getWeekIndex(new Date(), { startMonday: semesterStart }), [semesterStart]);
 
   useEffect(() => {
     if (!user) return;
@@ -68,6 +69,8 @@ const weekStart = React.useMemo(
           totalWeeks={totalWeeks}
           rangeText={rangeText}
           onChange={setWeek}
+          currentWeek={Math.min(currentWeek, totalWeeks)}
+
           titleCenter={
             <div className="text-center text-sm text-[var(--muted)]">
               {parity === "odd" ? "Непарний тиждень" : "Парний тиждень"}

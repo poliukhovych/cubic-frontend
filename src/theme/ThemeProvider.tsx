@@ -8,33 +8,41 @@ const Ctx = createContext<ThemeCtx | null>(null);
 const KEY = "fh.theme";
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Ініціалізація: зчитуємо з localStorage; якщо немає — темна за замовчуванням
   const getInitial = (): Theme => {
     try {
       const saved = localStorage.getItem(KEY) as Theme | null;
       if (saved === "light" || saved === "dark") return saved;
     } catch {}
-    return "dark"; // дефолтна тема
+    return "dark";
   };
 
   const [theme, setTheme] = useState<Theme>(getInitial);
 
-  // Застосовуємо атрибут і зберігаємо вибір
+  // застосовуємо тему + зберігаємо
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem(KEY, theme);
-    } catch {}
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    try { localStorage.setItem(KEY, theme); } catch {}
   }, [theme]);
 
-  const value = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      toggle: () => setTheme((t) => (t === "light" ? "dark" : "light")),
-    }),
-    [theme]
-  );
+  const toggle = () => {
+    const root = document.documentElement;
+    // 1) заморозити анімації/transition/backdrop-filter на час перемикання
+    root.classList.add("theme-switching");
+
+    // 2) змінити тему
+    setTheme((t) => (t === "light" ? "dark" : "light"));
+
+    // 3) дати WebKit відрепейнтити без ефектів
+    requestAnimationFrame(() => {
+      // невеличкий форс-рефлоу допомагає проти шлейфів у Safari
+      void root.offsetHeight;
+      // повернути анімації через ~120мс (зазвичай достатньо 80–150мс)
+      setTimeout(() => root.classList.remove("theme-switching"), 120);
+    });
+  };
+
+  const value = useMemo(() => ({ theme, setTheme, toggle }), [theme]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
