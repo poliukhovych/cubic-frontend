@@ -184,27 +184,6 @@ const CellCard: React.FC<{
 );
 
 /* ---------- порожня зона (для спадку сумісності) ---------- */
-const EmptyDropZone: React.FC<{ onDrop: () => void; dense?: boolean; editable: boolean }> = ({
-  onDrop,
-  dense,
-  editable,
-}) => (
-  <div
-    className={[
-      "rounded-xl border border-dashed text-center text-[var(--muted)]",
-      dense ? "p-2 text-[10px]" : "p-4 text-xs",
-    ].join(" ")}
-    style={{ borderColor: "color-mix(in oklab, var(--border), transparent 30%)" }}
-    onDragOver={(e) => editable && e.preventDefault()}
-    onDrop={(e) => {
-      if (!editable) return;
-      e.preventDefault();
-      onDrop();
-    }}
-  >
-    {editable ? "перетягніть пару сюди" : "—"}
-  </div>
-);
 
 /* ---------- верхній ряд фільтрів ---------- */
 const SelectorRow: React.FC<{
@@ -259,7 +238,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
   const [pageSize, setPageSize] = useState(10);
 
   const [allLessons, setAllLessons] = useState<FacultyLesson[]>([]);
-  const [dragging, setDragging] = useState<FacultyLesson | null>(null);
+  const [, setDragging] = useState<FacultyLesson | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -476,7 +455,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
   }, [groups]);
 
   /* ---------- інлайн-редактор (вставляється замість картки) ---------- */
-  const renderInlineEditor = (l: FacultyLesson) => (
+  const renderInlineEditor = () => (
     <div className={["glasscard rounded-xl m-1", dense ? "p-1.5 text-[12px]" : "p-2 text-sm"].join(" ")}>
       <div className="flex flex-col gap-2">
         <input
@@ -563,7 +542,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
         setLevel={setLevel}
         course={course}
         setCourse={setCourse}
-        parity={setParity ? parity : "any"}
+  parity={parity}
         setParity={setParity}
         dense={dense}
         setDense={setDense}
@@ -669,7 +648,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
                               >
                                 {anyItems.map((l) =>
                                   editingId === l.id ? (
-                                    <React.Fragment key={l.id}>{renderInlineEditor(l)}</React.Fragment>
+<React.Fragment key={l.id}>{renderInlineEditor()}</React.Fragment>
                                   ) : (
                                     <CellCard
                                       key={l.id}
@@ -709,7 +688,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
                                   {oddItems.length ? (
                                     oddItems.map((l) =>
                                       editingId === l.id ? (
-                                        <React.Fragment key={l.id}>{renderInlineEditor(l)}</React.Fragment>
+<React.Fragment key={l.id}>{renderInlineEditor()}</React.Fragment>
                                       ) : (
                                         <CellCard
                                           key={l.id}
@@ -742,7 +721,7 @@ const FacultyScheduleTable: React.FC<{ editable: boolean }> = ({ editable }) => 
                                   {evenItems.length ? (
                                     evenItems.map((l) =>
                                       editingId === l.id ? (
-                                        <React.Fragment key={l.id}>{renderInlineEditor(l)}</React.Fragment>
+<React.Fragment key={l.id}>{renderInlineEditor()}</React.Fragment>
                                       ) : (
                                         <CellCard
                                           key={l.id}
