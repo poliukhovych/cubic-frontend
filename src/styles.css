@@ -409,3 +409,18 @@ html.theme-switching *::after {
 
 /* Рекомендується явно вказати підтримку обох колірних схем для нативних контролів */
 :root { color-scheme: light dark; }
+
+/* --- сірі лінії між парами --- */
+.pair-divider {
+  border-top: 1px solid color-mix(in oklab, var(--muted), transparent 55%);
+  /* якщо хочеш пунктир: */
+  /* border-top-style: dashed; */
+}
+td.pair-divider {
+  border-top: 1px solid color-mix(in oklab, var(--muted), transparent 55%);
+}
+
+/* На першому рядку дня лінія не потрібна */
+tbody tr:first-of-type > td.pair-divider {
+  border-top: none;
+}

@@ -3,6 +3,7 @@ import AdminQuickPanel from "@/components/AdminQuickPanel";
 import FacultyScheduleTable from "@/components/FacultyScheduleTable";
 import { useAuth } from "@/types/auth";
 import { getViewMode, setViewMode, type ViewMode } from "@/lib/utils/prefs";
+import { exportSchedulePdf } from "@/lib/utils/pdf";
 
 const AdminDashboard: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -27,6 +28,7 @@ const AdminDashboard: React.FC = () => {
     setMode(m);
     if (uid) setViewMode(uid, m);
   };
+  const tableRef = React.useRef<HTMLDivElement>(null);
 
   return (
     <div className="space-y-6">
@@ -49,12 +51,29 @@ const AdminDashboard: React.FC = () => {
       ) : (
         <div
           className="
-            relative left-1/2 -translate-x-1/2
-            w-[99vw]
-            px-4 sm:px-6 lg:px-8
-          "
+    relative left-1/2 -translate-x-1/2
+    w-[99vw]
+    px-4 sm:px-6 lg:px-8
+  "
         >
-          <FacultyScheduleTable editable={mode !== "view"} />
+          <div ref={tableRef}>
+            <FacultyScheduleTable editable={mode !== "view"} />
+          </div>
+          <div className="mt-3 flex justify-end">
+            {/* <button
+              className="btn px-4 py-2 rounded-xl"
+              onClick={() =>
+                tableRef.current &&
+                exportSchedulePdf(
+                  tableRef.current,
+                  "faculty-schedule.pdf",
+                  "Розклад факультету"
+                )
+              }
+            >
+              Експорт у PDF
+            </button> */}
+          </div>
         </div>
       )}
 

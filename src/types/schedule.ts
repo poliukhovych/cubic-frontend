@@ -60,3 +60,13 @@ export type FacultyLesson = {
   /** 📌 якщо true — пара «запінена» і не рухається drag-n-drop'ом */
   pinned?: boolean;
 };
+
+export type ScheduleSnapshot = {
+  id: string;
+  title: string;
+  comment: string;               // ← обовʼязково
+  parity: "odd" | "even" | "both";
+  createdAt: string;             // ISO
+  createdBy: string;
+  lessons: FacultyLesson[];      // повний зріз поточного розкладу
+};

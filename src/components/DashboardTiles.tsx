@@ -1,7 +1,8 @@
 //src/components/DashboardTiles.tsx
 //import React from "react";
 import Tile from "./Tile";
-import { Calendar, BookOpen, Users, CheckCircle } from "lucide-react"; 
+import { Calendar, BookOpen, Users, CheckCircle} from "lucide-react";
+
 
 export const StudentTiles = () => (
   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -17,9 +18,3 @@ export const TeacherTiles = () => (
   </div>
 );
 
-export const AdminTiles = () => (
-  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    <Tile  to="/admin/teachers" title="Викладачі" icon={<Users className="h-8 w-8 text-primary hover-lift" />} subtitle="Викладачі, пари, аудиторії, час"/>
-    <Tile to="/admin/schedule" title="Загальний розклад" icon={<Calendar className="h-8 w-8 text-primary hover-lift" strokeWidth={1.75} />} subtitle="Загальний розклад"/>
-  </div>
-);

@@ -41,7 +41,6 @@ const AdminCourses: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="text-2xl font-semibold">Курси</div>
-
       <div className="flex gap-3">
         <input
           className="input max-w-md"

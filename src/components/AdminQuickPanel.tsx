@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { fetchAdminStats, pushAdminChange } from "@/lib/fakeApi/admin";
-import { Users, BookOpen } from "lucide-react";
+import { Users, BookOpen, Archive } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import ViewModeToggle from "./ViewModeToggle";
 import Toast from "@/components/Toast";
 import type { ViewMode } from "@/lib/utils/prefs";
+import ExportButtons from "@/components/ExportButtons";
 
 type Stats = { students: number; teachers: number; courses: number };
 
@@ -56,7 +57,7 @@ const AdminQuickPanel: React.FC<{
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {!isMobile && (
           <ViewModeToggle
             value={value}
@@ -91,31 +92,22 @@ const AdminQuickPanel: React.FC<{
           count={stats?.courses}
           icon={<BookOpen className="h-8 w-8 text-primary" />}
         />
+        <StatTile
+          to="/admin/archive"
+          title="Архів"
+          subtitle="Знімки, історія, PDF"
+          icon={<Archive className="h-8 w-8 text-primary" />}
+        />
       </div>
 
       {!isMobile && (
         <div className="mt-4">
           {value === "view" ? (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <button
-                className="btn py-3 rounded-2xl hover-shadow"
-                onClick={() => flash("Експорт усього розкладу")}
-              >
-                Експортувати весь розклад
-              </button>
-              <button
-                className="btn py-3 rounded-2xl hover-shadow"
-                onClick={() => flash("Експорт обраного курсу")}
-              >
-                Експортувати розклад курсу
-              </button>
-              <button
-                className="btn py-3 rounded-2xl hover-shadow"
-                onClick={() => flash("Експорт бакалаврів / магістрів")}
-              >
-                Експортувати розклад бакалаврів / магістрів
-              </button>
-            </div>
+            <ExportButtons
+              onExportAll={() => flash("Експорт усього розкладу")}
+              onExportCourse={() => flash("Експорт обраного курсу")}
+              onExportLevel={() => flash("Експорт бакалаврів / магістрів")}
+            />
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
               <button

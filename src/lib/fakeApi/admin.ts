@@ -5,6 +5,7 @@ import type { TeacherSchedule } from "@/types/schedule";
 import type { Student, Group } from "@/types/students";
 import type { Course } from "@/types/courses";
 import type { FacultyLesson, Parity } from "@/types/schedule";
+import type { ScheduleSnapshot } from "@/types/schedule";
 import { SEED_BACHELOR, SEED_MASTER } from "@/lib/fakeApi/facultyScheduleSeed";
 
 /* ------------------------------ TEACHERS --------------------------------- */
@@ -202,8 +203,70 @@ export function filterFacultyLessons(opts: {
     (parity && parity !== "any" ? (l.parity === "any" || l.parity === parity) : true)
   );
 }
+/* ------------------------------ ARCHIVE SNAPSHOTS ------------------------------ */
 
-/* ----------------------------- GROUPS/STUDENTS --------------------------- */
+
+const SNAP_KEY = "cubic:scheduleSnapshots";
+
+function readSnaps(): ScheduleSnapshot[] {
+  try {
+    const raw = localStorage.getItem(SNAP_KEY);
+    return raw ? (JSON.parse(raw) as ScheduleSnapshot[]) : [];
+  } catch { return []; }
+}
+function writeSnaps(next: ScheduleSnapshot[]) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(next)); } catch {}
+}
+
+// Список (для таблиці архіву)
+export async function listScheduleSnapshots(): Promise<
+  Array<Pick<ScheduleSnapshot, "id" | "title" | "createdAt" | "parity" | "createdBy" | "comment">>
+> {
+  return readSnaps()
+    .map(s => ({
+      id: s.id,
+      title: s.title,
+      createdAt: s.createdAt,
+      parity: s.parity,
+      createdBy: s.createdBy,
+      comment: s.comment,
+    }))
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+}
+
+// Повний знімок
+export async function getScheduleSnapshot(id: string): Promise<ScheduleSnapshot | null> {
+  return readSnaps().find(s => s.id === id) ?? null;
+}
+
+// Створення знімка
+export async function createScheduleSnapshot(
+  title: string,
+  comment: string,
+  parity: "odd" | "even" | "both",
+  createdBy: string,
+  lessons: FacultyLesson[]
+): Promise<ScheduleSnapshot> {
+  const snap: ScheduleSnapshot = {
+    id: (crypto as any).randomUUID?.() ?? Math.random().toString(36).slice(2),
+    title,
+    comment,
+    parity,
+    createdAt: new Date().toISOString(),
+    createdBy,
+    lessons,
+  };
+  const next = [snap, ...readSnaps()];
+  writeSnaps(next);
+  return snap;
+}
+
+export async function deleteScheduleSnapshot(id: string): Promise<void> {
+  writeSnaps(readSnaps().filter(s => s.id !== id));
+}
+
+/* ----------------------------- GROUPS/STUDENTS/COURSES --------------------------- */
+// Групи
 export async function fetchAdminGroups(): Promise<Group[]> {
   return ok([
     { id: "g1", name: "КН-41", size: 28 },
@@ -212,6 +275,7 @@ export async function fetchAdminGroups(): Promise<Group[]> {
   ]);
 }
 
+// Студенти
 export async function fetchAdminStudents(): Promise<Student[]> {
   return ok([
     { id: uid(), name: "Андрій Сидоренко", email: "andriy@uni.ua", groupId: "g1" },
@@ -221,11 +285,12 @@ export async function fetchAdminStudents(): Promise<Student[]> {
   ]);
 }
 
+// Курси
 export async function fetchAdminCourses(): Promise<Course[]> {
   return ok([
-    { id: uid(), code: "DB101",  title: "Бази даних",                    groupIds: ["g1","g2"], teacherId: "t1" },
-    { id: uid(), code: "CS201",  title: "Операційні системи",            groupIds: ["g2"],      teacherId: "t2" },
-    { id: uid(), code: "PR301",  title: "Проєктний практикум",           groupIds: ["g1","g3"], teacherId: "t2" },
-    { id: uid(), code: "ALG150", title: "Алгоритми та структури даних",  groupIds: ["g3"],      teacherId: "t1" },
+    { id: uid(), code: "DB101",  title: "Бази даних",                   groupIds: ["g1","g2"], teacherId: "t1" },
+    { id: uid(), code: "CS201",  title: "Операційні системи",           groupIds: ["g2"],      teacherId: "t2" },
+    { id: uid(), code: "PR301",  title: "Проєктний практикум",          groupIds: ["g1","g3"], teacherId: "t2" },
+    { id: uid(), code: "ALG150", title: "Алгоритми та структури даних", groupIds: ["g3"],      teacherId: "t1" },
   ]);
 }

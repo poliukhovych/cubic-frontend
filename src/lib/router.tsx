@@ -22,10 +22,11 @@ import AdminSchedule from "@/pages/admin/AdminSchedule";
 import AdminLogs from "@/pages/admin/AdminLogs";
 import AdminArchive from "@/pages/admin/AdminArchive";
 import AdminCourses from "@/pages/admin/AdminCourses";
+import AdminArchiveView from "@/pages/admin/AdminArchiveView";
 
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Layout from "@/components/Layout";
-import AdminStudents from "@/pages/admin/AdmineStudents";
+import AdminStudents from "@/pages/admin/AdminStudents";
 import StudentSubject from "@/pages/student/StudentSubject"; // ✅ нове
 import TeacherSubject from "@/pages/teacher/TeacherSubject";
 
@@ -92,7 +93,8 @@ export const router = createBrowserRouter(
             { path: "archive", element: <AdminArchive /> },
             { path: "courses", element: <AdminCourses /> },
             { path: "students", element: <AdminStudents /> },
-          ],
+            { path: "archive/:id", element: <AdminArchiveView /> },
+          ]
         },
 
         { path: "*", element: <Navigate to="/" replace /> },

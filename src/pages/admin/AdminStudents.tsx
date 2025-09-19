@@ -30,7 +30,6 @@ const AdminStudents: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="text-2xl font-semibold">Студенти</div>
-
       <div className="flex gap-3">
         <input
           className="input max-w-md"
