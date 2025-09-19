@@ -272,6 +272,8 @@ const SelectorRow: React.FC<{
   </div>
 );
 
+
+
 const FacultyScheduleTable: React.FC<{
   editable: boolean;
   lessons?: FacultyLesson[]; // якщо передали — не фетчимо з fakeApi
@@ -987,9 +989,9 @@ const sortGroups = (a: string, b: string) =>
                                         )
                                       )
                                     ) : editable ? (
+                                       <div className="flex flex-col gap-2 ">
                                       <button
-                                        className="w-full rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                        onClick={() =>
+className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"                                        onClick={() =>
                                           createDraftLesson({
                                             weekday,
                                             pair,
@@ -1002,6 +1004,7 @@ const sortGroups = (a: string, b: string) =>
                                         <Plus className="inline h-3 w-3 mr-1" />{" "}
                                         Додати непарну пару
                                       </button>
+                                      </div>
                                     ) : (
                                       <div className="h-3" />
                                     )}
@@ -1034,8 +1037,9 @@ const sortGroups = (a: string, b: string) =>
                                         )
                                       )
                                     ) : editable ? (
+                                                                    <div className="flex flex-col gap-2 ">
                                       <button
-                                        className="w-full hover-lift rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                  className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
                                         onClick={() =>
                                           createDraftLesson({
                                             weekday,
@@ -1049,6 +1053,7 @@ const sortGroups = (a: string, b: string) =>
                                         <Plus className="inline h-3 w-3 mr-1" />{" "}
                                         Додати парну пару
                                       </button>
+                                      </div>
                                     ) : (
                                       <div className="h-3" />
                                     )}
