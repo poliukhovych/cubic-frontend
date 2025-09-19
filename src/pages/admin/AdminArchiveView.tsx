@@ -1,3 +1,4 @@
+// src/pages/admin/AdminArchiveView.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
@@ -7,16 +8,13 @@ import {
   createScheduleSnapshot,
 } from "@/lib/fakeApi/admin";
 import FacultyScheduleTable from "@/components/FacultyScheduleTable";
-// import ExportButtons from "@/components/ExportButtons"; // не використовуємо тут, робимо компактну верстку як на Dashboard
+import ExportButtons from "@/components/ExportButtons";
 import { exportSchedulePdf } from "@/lib/utils/pdf";
 import { useAuth } from "@/types/auth";
 import type { ScheduleSnapshot, FacultyLesson } from "@/types/schedule";
 import { createPortal } from "react-dom";
 
 type Level = "bachelor" | "master";
-
-const parityLabel = (p: "odd" | "even" | "both") =>
-  p === "odd" ? "Непарний" : p === "even" ? "Парний" : "Вся сітка";
 
 const AdminArchiveView: React.FC = () => {
   const { id } = useParams();
@@ -35,9 +33,8 @@ const AdminArchiveView: React.FC = () => {
       exportSchedulePdf(tableRef.current, `${snap.title}.pdf`, snap.title);
     }
   };
-  // Поки що експортуємо саме те, що на екрані
-  const onExportCourse = onExportAll;
-  const onExportLevel = onExportAll;
+  const onExportCourse = onExportAll; // поки що експортуємо саме те, що на екрані
+  const onExportLevel = onExportAll;  // (можемо деталізувати пізніше)
 
   const makeCurrent = async () => {
     if (!snap) return;
@@ -115,7 +112,6 @@ const AdminArchiveView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Хедер */}
       <div className="flex items-center gap-3">
         <Link to="/admin/archive" className="btn px-3 py-2 rounded-xl">
           ← До списку архіву
@@ -123,14 +119,14 @@ const AdminArchiveView: React.FC = () => {
         <div className="text-2xl font-semibold">Архів — перегляд знімка</div>
       </div>
 
-      {/* Інформаційна панель про знімок */}
+      {/* Інфо-панель про знімок */}
       <div className="glasscard p-4">
         <div className="font-semibold text-lg">{snap.title}</div>
         <div className="text-sm text-[var(--muted)]">
           Збережено: {new Date(snap.createdAt).toLocaleString()} · Автор:{" "}
-          {snap.createdBy} · Парність: {parityLabel(snap.parity)}
+          {snap.createdBy} · Парність: {snap.parity === "both" ? "Вся сітка" : snap.parity}
         </div>
-        {snap.comment && <div className="mt-2 whitespace-pre-wrap">{snap.comment}</div>}
+        {snap.comment && <div className="mt-2">{snap.comment}</div>}
 
         <div className="mt-4">
           <button
@@ -142,22 +138,24 @@ const AdminArchiveView: React.FC = () => {
         </div>
       </div>
 
-      {/* Експортні кнопки — компактні, як на AdminDashboard, РОЗТАШОВАНІ МІЖ панеллю і таблицею */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <button className="btn py-3 rounded-2xl hover-shadow" onClick={onExportAll}>
-          Експортувати весь розклад
-        </button>
-        <button className="btn py-3 rounded-2xl hover-shadow" onClick={onExportCourse}>
-          Експортувати розклад курсу
-        </button>
-        <button className="btn py-3 rounded-2xl hover-shadow" onClick={onExportLevel}>
-          Експортувати розклад бакалаврів / магістрів
-        </button>
-      </div>
+      {/* Кнопки експорту — між панеллю і самою таблицею */}
+      <ExportButtons
+        onExportAll={onExportAll}
+        onExportCourse={onExportCourse}
+        onExportLevel={onExportLevel}
+      />
 
-      {/* Таблиця розкладу з цього знімка */}
-      <div ref={tableRef}>
-        <FacultyScheduleTable editable={false} lessons={snap.lessons} />
+      {/* ✅ ФУЛ-В’ЮПОРТ ОБГОРТКА (як на AdminDashboard) */}
+      <div
+        className="
+          relative left-1/2 -translate-x-1/2
+          w-[99vw]
+          px-4 sm:px-6 lg:px-8
+        "
+      >
+        <div ref={tableRef}>
+          <FacultyScheduleTable editable={false} lessons={snap.lessons} />
+        </div>
       </div>
 
       {confirmModal}

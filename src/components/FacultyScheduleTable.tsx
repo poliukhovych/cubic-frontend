@@ -102,7 +102,7 @@ const ParityToggle: React.FC<{
 const CellCard: React.FC<{
   lesson: FacultyLesson;
   dense?: boolean;
-  onDragStart: (l: FacultyLesson) => void;
+  onDragStart: (l: FacultyLesson | null) => void;
   onTogglePin: (id: string) => void;
   onDelete: (id: string) => void;
   onStartEdit: (l: FacultyLesson) => void;
@@ -132,6 +132,11 @@ const CellCard: React.FC<{
     draggable={editable && !lesson.pinned}
     onDragStart={(e) => {
       if (!editable || lesson.pinned) return;
+      // чіткий сигнал браузеру про перенос
+      try {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.dropEffect = "move";
+      } catch {}
       e.dataTransfer.setData("text/plain", lesson.id);
       onDragStart(lesson);
     }}
@@ -175,9 +180,7 @@ const CellCard: React.FC<{
 
     <div
       className={
-        dense
-          ? "text-[10px] text-[var(--muted)]"
-          : "text-xs text-[var(--muted)]"
+        dense ? "text-[10px] text-[var(--muted)]" : "text-xs text-[var(--muted)]"
       }
     >
       {lesson.teacher && lesson.teacher.trim() ? (
@@ -272,8 +275,6 @@ const SelectorRow: React.FC<{
   </div>
 );
 
-
-
 const FacultyScheduleTable: React.FC<{
   editable: boolean;
   lessons?: FacultyLesson[]; // якщо передали — не фетчимо з fakeApi
@@ -304,17 +305,24 @@ const FacultyScheduleTable: React.FC<{
   const [snapTitle, setSnapTitle] = useState("");
   const [snapComment, setSnapComment] = useState("");
   const [snapBusy, setSnapBusy] = useState(false);
-const sortGroups = (a: string, b: string) =>
-  a.localeCompare(b, "uk", { numeric: true, sensitivity: "base" });
+
+  const sortGroups = (a: string, b: string) =>
+    a.localeCompare(b, "uk", { numeric: true, sensitivity: "base" });
+
+  /* ---------- DnD helpers ---------- */
+  const allowDrop = (e: React.DragEvent) => {
+    if (!editable) return;
+    e.preventDefault();
+    try {
+      e.dataTransfer.dropEffect = "move";
+    } catch {}
+  };
 
   const handleConfirmSnapshot = async () => {
     if (!snapTitle.trim() || !snapComment.trim()) return;
     try {
       setSnapBusy(true);
-      // 1) зберегти поточний актуальний розклад (твоя існуюча логіка)
       await saveAll(); // збереже у fakeApi твій “активний” стан
-
-      // 2) створити знімок у Архіві
       await createScheduleSnapshot(
         snapTitle.trim(),
         snapComment.trim(),
@@ -322,8 +330,6 @@ const sortGroups = (a: string, b: string) =>
         user?.name ?? "Admin",
         allLessons // зберігаємо весь набір пар
       );
-
-      // 3) закрити модалку та очистити поля
       setSnapOpen(false);
       setSnapTitle("");
       setSnapComment("");
@@ -346,12 +352,14 @@ const sortGroups = (a: string, b: string) =>
   }, []);
 
   useEffect(() => {
-  if (snapOpen) {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }
-}, [snapOpen]);
+    if (snapOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [snapOpen]);
 
   const viewLessons = useMemo(
     () => filterFacultyLessons({ lessons: allLessons, course, parity }),
@@ -359,15 +367,14 @@ const sortGroups = (a: string, b: string) =>
   );
 
   const allGroups = useMemo(() => {
-  const set = new Set<string>();
-  viewLessons.forEach((l) => {
-    const g = (l.group ?? (l as any).speciality ?? "").toString().trim();
-    if (g) set.add(g);
-  });
-  // 🔒 фіксуємо стабільний порядок колонок
-  return Array.from(set).sort(sortGroups);
-}, [viewLessons]);
-
+    const set = new Set<string>();
+    viewLessons.forEach((l) => {
+      const g = (l.group ?? (l as any).speciality ?? "").toString().trim();
+      if (g) set.add(g);
+    });
+    // 🔒 фіксуємо стабільний порядок колонок
+    return Array.from(set).sort(sortGroups);
+  }, [viewLessons]);
 
   const maxPage = Math.max(0, Math.ceil(allGroups.length / pageSize) - 1);
   useEffect(() => {
@@ -526,8 +533,29 @@ const sortGroups = (a: string, b: string) =>
   ) => {
     if (!editable) return;
     e.preventDefault();
+    e.stopPropagation();
     const id = e.dataTransfer.getData("text/plain");
     if (id) moveLesson(id, coords);
+    setDragging(null);
+  };
+
+  // drop на пусту зону з конкретизацією парності
+  const dropIntoEmpty = (
+    e: React.DragEvent,
+    coords: { weekday: 1 | 2 | 3 | 4 | 5 | 6; pair: 1 | 2 | 3 | 4; group: string },
+    forceParity: Parity
+  ) => {
+    if (!editable) return;
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain");
+    if (!id) return;
+    moveLesson(id, coords);
+    // після переміщення — виставляємо парність
+    setAllLessons((prev) =>
+      prev.map((l) =>
+        l.id === id ? { ...l, parity: forceParity, time: TIMES[coords.pair] } : l
+      )
+    );
     setDragging(null);
   };
 
@@ -841,53 +869,86 @@ const sortGroups = (a: string, b: string) =>
                               }`}
                             >
                               <div className="flex flex-col gap-2 ">
-                                <button
-                                  className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                  onClick={() =>
-                                    createDraftLesson({
-                                      weekday,
-                                      pair,
-                                      group,
-                                      parity: "odd",
-                                    })
+                                <div
+                                  onDragOver={allowDrop}
+                                  onDrop={(e) =>
+                                    dropIntoEmpty(
+                                      e,
+                                      { weekday, pair, group },
+                                      "odd"
+                                    )
                                   }
-                                  title="Додати пару (odd)"
                                 >
-                                  <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                  Додати непарну пару
-                                </button>
+                                  <button
+                                    className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                    onClick={() =>
+                                      createDraftLesson({
+                                        weekday,
+                                        pair,
+                                        group,
+                                        parity: "odd",
+                                      })
+                                    }
+                                    title="Додати пару (odd)"
+                                  >
+                                    <Plus className="inline h-3 w-3 mr-1" />{" "}
+                                    Додати непарну пару
+                                  </button>
+                                </div>
 
-                                <button
-                                  className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                  onClick={() =>
-                                    createDraftLesson({
-                                      weekday,
-                                      pair,
-                                      group,
-                                      parity: "any",
-                                    })
+                                <div
+                                  onDragOver={allowDrop}
+                                  onDrop={(e) =>
+                                    dropIntoEmpty(
+                                      e,
+                                      { weekday, pair, group },
+                                      "any"
+                                    )
                                   }
-                                  title="Створити (any)"
                                 >
-                                  <Plus className="hover-lift inline h-3 w-3 mr-1" />{" "}
-                                  Додати пару
-                                </button>
+                                  <button
+                                    className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                    onClick={() =>
+                                      createDraftLesson({
+                                        weekday,
+                                        pair,
+                                        group,
+                                        parity: "any",
+                                      })
+                                    }
+                                    title="Створити (any)"
+                                  >
+                                    <Plus className="hover-lift inline h-3 w-3 mr-1" />{" "}
+                                    Додати пару
+                                  </button>
+                                </div>
 
-                                <button
-                                  className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                  onClick={() =>
-                                    createDraftLesson({
-                                      weekday,
-                                      pair,
-                                      group,
-                                      parity: "even",
-                                    })
+                                <div
+                                  onDragOver={allowDrop}
+                                  onDrop={(e) =>
+                                    dropIntoEmpty(
+                                      e,
+                                      { weekday, pair, group },
+                                      "even"
+                                    )
                                   }
-                                  title="Додати пару (even)"
                                 >
-                                  <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                  Додати парну пару
-                                </button>
+                                  <button
+                                    className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                    onClick={() =>
+                                      createDraftLesson({
+                                        weekday,
+                                        pair,
+                                        group,
+                                        parity: "even",
+                                      })
+                                    }
+                                    title="Додати пару (even)"
+                                  >
+                                    <Plus className="inline h-3 w-3 mr-1" />{" "}
+                                    Додати парну пару
+                                  </button>
+                                </div>
                               </div>
                             </td>
                           );
@@ -903,11 +964,12 @@ const sortGroups = (a: string, b: string) =>
                           >
                             <div
                               className="grid grid-rows-2 gap-1 relative"
-                              onDragOver={(e) => editable && e.preventDefault()}
+                              onDragOver={allowDrop}
                             >
                               {anyItems.length > 0 ? (
                                 <div
                                   className="row-span-2"
+                                  onDragOver={allowDrop}
                                   onDrop={(e) => {
                                     onDropToCell(e, { weekday, pair, group });
                                   }}
@@ -966,6 +1028,7 @@ const sortGroups = (a: string, b: string) =>
                                   <div
                                     style={{ minHeight: dense ? 40 : 52 }}
                                     className="rounded-md"
+                                    onDragOver={allowDrop}
                                     onDrop={(e) => dropToHalf(e, "top")}
                                   >
                                     {oddItems.length ? (
@@ -989,21 +1052,22 @@ const sortGroups = (a: string, b: string) =>
                                         )
                                       )
                                     ) : editable ? (
-                                       <div className="flex flex-col gap-2 ">
-                                      <button
-className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"                                        onClick={() =>
-                                          createDraftLesson({
-                                            weekday,
-                                            pair,
-                                            group,
-                                            parity: "odd",
-                                          })
-                                        }
-                                        title="Додати пару (odd)"
-                                      >
-                                        <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                        Додати непарну пару
-                                      </button>
+                                      <div className="flex flex-col gap-2 ">
+                                        <button
+                                          className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                          onClick={() =>
+                                            createDraftLesson({
+                                              weekday,
+                                              pair,
+                                              group,
+                                              parity: "odd",
+                                            })
+                                          }
+                                          title="Додати пару (odd)"
+                                        >
+                                          <Plus className="inline h-3 w-3 mr-1" />{" "}
+                                          Додати непарну пару
+                                        </button>
                                       </div>
                                     ) : (
                                       <div className="h-3" />
@@ -1014,6 +1078,7 @@ className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[va
                                   <div
                                     style={{ minHeight: dense ? 40 : 52 }}
                                     className="rounded-md"
+                                    onDragOver={allowDrop}
                                     onDrop={(e) => dropToHalf(e, "bottom")}
                                   >
                                     {evenItems.length ? (
@@ -1037,22 +1102,22 @@ className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[va
                                         )
                                       )
                                     ) : editable ? (
-                                                                    <div className="flex flex-col gap-2 ">
-                                      <button
-                                  className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-                                        onClick={() =>
-                                          createDraftLesson({
-                                            weekday,
-                                            pair,
-                                            group,
-                                            parity: "even",
-                                          })
-                                        }
-                                        title="Додати пару (even)"
-                                      >
-                                        <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                        Додати парну пару
-                                      </button>
+                                      <div className="flex flex-col gap-2 ">
+                                        <button
+                                          className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                          onClick={() =>
+                                            createDraftLesson({
+                                              weekday,
+                                              pair,
+                                              group,
+                                              parity: "even",
+                                            })
+                                          }
+                                          title="Додати пару (even)"
+                                        >
+                                          <Plus className="inline h-3 w-3 mr-1" />{" "}
+                                          Додати парну пару
+                                        </button>
                                       </div>
                                     ) : (
                                       <div className="h-3" />
@@ -1092,66 +1157,72 @@ className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[va
           </select>
         </label>
       </div>
-      {snapOpen && createPortal(
-  <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-    <div
-      className="absolute inset-0 bg-black/50"
-      onClick={() => !snapBusy && setSnapOpen(false)}
-    />
-    <div
-      className="glasscard relative z-10 w-[min(560px,92vw)] max-h-[85vh] overflow-auto p-5 rounded-2xl"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="snap-title"
-    >
-      <div id="snap-title" className="text-lg font-semibold mb-3">
-        Зберегти до Архіву
-      </div>
+      {snapOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => !snapBusy && setSnapOpen(false)}
+            />
+            <div
+              className="glasscard relative z-10 w-[min(560px,92vw)] max-h-[85vh] overflow-auto p-5 rounded-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="snap-title"
+            >
+              <div id="snap-title" className="text-lg font-semibold mb-3">
+                Зберегти до Архіву
+              </div>
 
-      <label className="block text-sm text-[var(--muted)] mb-1">Назва</label>
-      <input
-        className="input w-full mb-3"
-        placeholder="Напр. W36 — після правок"
-        value={snapTitle}
-        onChange={(e) => setSnapTitle(e.target.value)}
-        disabled={snapBusy}
-      />
+              <label className="block text-sm text-[var(--muted)] mb-1">
+                Назва
+              </label>
+              <input
+                className="input w-full mb-3"
+                placeholder="Напр. W36 — після правок"
+                value={snapTitle}
+                onChange={(e) => setSnapTitle(e.target.value)}
+                disabled={snapBusy}
+              />
 
-      <label className="block text-sm text-[var(--muted)] mb-1">Коментар</label>
-      <textarea
-        className="input w-full min-h-[96px]"
-        placeholder="Коротко опиши, що змінили"
-        value={snapComment}
-        onChange={(e) => setSnapComment(e.target.value)}
-        disabled={snapBusy}
-      />
+              <label className="block text-sm text-[var(--muted)] mb-1">
+                Коментар
+              </label>
+              <textarea
+                className="input w-full min-h-[96px]"
+                placeholder="Коротко опиши, що змінили"
+                value={snapComment}
+                onChange={(e) => setSnapComment(e.target.value)}
+                disabled={snapBusy}
+              />
 
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          className="btn px-4 py-2 rounded-xl"
-          onClick={() => setSnapOpen(false)}
-          disabled={snapBusy}
-        >
-          Скасувати
-        </button>
-        <button
-          className="btn px-4 py-2 rounded-xl"
-          onClick={handleConfirmSnapshot}
-          disabled={snapBusy || !snapTitle.trim() || !snapComment.trim()}
-          title={
-            !snapTitle.trim() || !snapComment.trim()
-              ? "Заповни назву і коментар"
-              : "Зберегти до Архіву"
-          }
-        >
-          {snapBusy ? "Зберігаємо…" : "Підтвердити"}
-        </button>
-      </div>
-    </div>
-  </div>,
-  document.body
-)}
-
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  className="btn px-4 py-2 rounded-xl"
+                  onClick={() => setSnapOpen(false)}
+                  disabled={snapBusy}
+                >
+                  Скасувати
+                </button>
+                <button
+                  className="btn px-4 py-2 rounded-xl"
+                  onClick={handleConfirmSnapshot}
+                  disabled={
+                    snapBusy || !snapTitle.trim() || !snapComment.trim()
+                  }
+                  title={
+                    !snapTitle.trim() || !snapComment.trim()
+                      ? "Заповни назву і коментар"
+                      : "Зберегти до Архіву"
+                  }
+                >
+                  {snapBusy ? "Зберігаємо…" : "Підтвердити"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
