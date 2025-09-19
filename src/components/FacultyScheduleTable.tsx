@@ -79,7 +79,7 @@ const ParityToggle: React.FC<{
       type="button"
       onClick={() => onChange(v)}
       className={[
-        "px-2 py-1 rounded-md text-xs transition",
+        "px-2 py-1 rounded-2xl text-xs transition hover-lift",
         value === v
           ? "bg-[var(--surface-2)] ring-1 ring-[var(--border)]"
           : "hover:bg-[var(--surface-2)]/60",
@@ -90,10 +90,10 @@ const ParityToggle: React.FC<{
     </button>
   );
   return (
-    <div className="inline-flex items-center gap-1 bg-[var(--surface)] rounded-md p-1 ring-1 ring-[var(--border)]">
-      <Item v="any" label="any" />
-      <Item v="odd" label="odd" />
-      <Item v="even" label="even" />
+    <div className="hover-lift inline-flex items-center gap-1 bg-[var(--surface)] rounded-2xl p-1 ring-1 ring-[var(--border)]">
+      <Item v="any" label="довільний" />
+      <Item v="odd" label="непарнтй" />
+      <Item v="even" label="парний" />
     </div>
   );
 };
@@ -146,14 +146,14 @@ const CellCard: React.FC<{
         {editable && (
           <>
             <button
-              className="rounded-md p-1 hover:bg-[var(--surface-2)]"
+              className="hover-lift rounded-md p-1 hover:bg-[var(--surface-2)]"
               title="Редагувати"
               onClick={() => onStartEdit(lesson)}
             >
               <Edit2 className="h-4 w-4" />
             </button>
             <button
-              className="rounded-md p-1 hover:bg-[var(--surface-2)]"
+              className="hover-lift rounded-md p-1 hover:bg-[var(--surface-2)]"
               title="Видалити"
               onClick={() => onDelete(lesson.id)}
             >
@@ -302,6 +302,8 @@ const FacultyScheduleTable: React.FC<{
   const [snapTitle, setSnapTitle] = useState("");
   const [snapComment, setSnapComment] = useState("");
   const [snapBusy, setSnapBusy] = useState(false);
+const sortGroups = (a: string, b: string) =>
+  a.localeCompare(b, "uk", { numeric: true, sensitivity: "base" });
 
   const handleConfirmSnapshot = async () => {
     if (!snapTitle.trim() || !snapComment.trim()) return;
@@ -355,13 +357,15 @@ const FacultyScheduleTable: React.FC<{
   );
 
   const allGroups = useMemo(() => {
-    const set = new Set<string>();
-    viewLessons.forEach((l) => {
-      const g = (l.group ?? (l as any).speciality ?? "").toString().trim();
-      if (g) set.add(g);
-    });
-    return Array.from(set);
-  }, [viewLessons]);
+  const set = new Set<string>();
+  viewLessons.forEach((l) => {
+    const g = (l.group ?? (l as any).speciality ?? "").toString().trim();
+    if (g) set.add(g);
+  });
+  // 🔒 фіксуємо стабільний порядок колонок
+  return Array.from(set).sort(sortGroups);
+}, [viewLessons]);
+
 
   const maxPage = Math.max(0, Math.ceil(allGroups.length / pageSize) - 1);
   useEffect(() => {
@@ -450,7 +454,7 @@ const FacultyScheduleTable: React.FC<{
       location: "",
       pinned: false,
     };
-    setAllLessons((prev) => [l, ...prev]);
+    setAllLessons((prev) => [...prev, l]);
     setDraftIds((prev) => new Set(prev).add(l.id));
     startEdit(l);
   };
@@ -583,7 +587,7 @@ const FacultyScheduleTable: React.FC<{
     >
       <div className="flex flex-col gap-2">
         <input
-          className="input"
+          className="input hover-lift"
           placeholder="Назва предмету"
           value={editBuf.subject ?? ""}
           onChange={(e) =>
@@ -592,13 +596,13 @@ const FacultyScheduleTable: React.FC<{
         />
         <div className="flex gap-2">
           <select
-            className="select flex-1"
+            className="select flex-1 hover-lift glasscard p-1"
             value={editBuf.teacher ?? ""}
             onChange={(e) =>
               setEditBuf((prev) => ({ ...prev, teacher: e.target.value }))
             }
           >
-            <option value="">— Викладач —</option>
+            <option value="">Викладач</option>
             {teachers.map((t) => (
               <option key={t.id} value={t.name}>
                 {t.name}
@@ -606,7 +610,7 @@ const FacultyScheduleTable: React.FC<{
             ))}
           </select>
           <input
-            className="input flex-1"
+            className="input flex-1 hover-lift"
             placeholder="Аудиторія"
             value={editBuf.location ?? ""}
             onChange={(e) =>
@@ -621,14 +625,14 @@ const FacultyScheduleTable: React.FC<{
           />
           <div className="ml-auto flex items-center gap-1">
             <button
-              className="btn px-2 py-1 rounded-md"
+              className="btn hover-lift px-2 py-1 rounded-md"
               onClick={commitEdit}
               title="Застосувати"
             >
               <Check className="h-4 w-4" />
             </button>
             <button
-              className="btn px-2 py-1 rounded-md"
+              className="btn hover-lift px-2 py-1 rounded-md"
               onClick={cancelEdit}
               title="Скасувати"
             >
@@ -834,9 +838,9 @@ const FacultyScheduleTable: React.FC<{
                                 pairIdx > 0 ? "pair-divider" : ""
                               }`}
                             >
-                              <div className="flex flex-col gap-2">
+                              <div className="flex flex-col gap-2 ">
                                 <button
-                                  className="w-full rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                  className="hover-lift rounded-xl border border-dashed text-xs mx-2 py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
                                   onClick={() =>
                                     createDraftLesson({
                                       weekday,
@@ -848,11 +852,11 @@ const FacultyScheduleTable: React.FC<{
                                   title="Додати пару (odd)"
                                 >
                                   <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                  Додати odd
+                                  Додати непарну пару
                                 </button>
 
                                 <button
-                                  className="w-full rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                  className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
                                   onClick={() =>
                                     createDraftLesson({
                                       weekday,
@@ -863,12 +867,12 @@ const FacultyScheduleTable: React.FC<{
                                   }
                                   title="Створити (any)"
                                 >
-                                  <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                  Створити (any)
+                                  <Plus className="hover-lift inline h-3 w-3 mr-1" />{" "}
+                                  Додати пару
                                 </button>
 
                                 <button
-                                  className="w-full rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                  className="hover-lift mx-2 rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
                                   onClick={() =>
                                     createDraftLesson({
                                       weekday,
@@ -880,7 +884,7 @@ const FacultyScheduleTable: React.FC<{
                                   title="Додати пару (even)"
                                 >
                                   <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                  Додати even
+                                  Додати парну пару
                                 </button>
                               </div>
                             </td>
@@ -930,7 +934,7 @@ const FacultyScheduleTable: React.FC<{
                                   {editable && anyItems[0] && (
                                     <div className="flex flex-col gap-1">
                                       <button
-                                        className="btn px-2 py-1 m-1 rounded-md"
+                                        className=" hover-lift btn px-2 py-1 m-1 rounded-md"
                                         title="Розщепити на odd/even (odd вгорі)"
                                         onClick={() => {
                                           const a = anyItems[0];
@@ -949,7 +953,7 @@ const FacultyScheduleTable: React.FC<{
                                           });
                                         }}
                                       >
-                                        <Shuffle className="h-4 w-4" />
+                                        <Shuffle className=" hover-lift h-4 w-4" />
                                       </button>
                                     </div>
                                   )}
@@ -996,7 +1000,7 @@ const FacultyScheduleTable: React.FC<{
                                         title="Додати пару (odd)"
                                       >
                                         <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                        Додати odd
+                                        Додати непарну пару
                                       </button>
                                     ) : (
                                       <div className="h-3" />
@@ -1031,7 +1035,7 @@ const FacultyScheduleTable: React.FC<{
                                       )
                                     ) : editable ? (
                                       <button
-                                        className="w-full rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
+                                        className="w-full hover-lift rounded-xl border border-dashed text-xs py-3 text-[var(--muted)] hover:bg-[var(--surface-2)]"
                                         onClick={() =>
                                           createDraftLesson({
                                             weekday,
@@ -1043,7 +1047,7 @@ const FacultyScheduleTable: React.FC<{
                                         title="Додати пару (even)"
                                       >
                                         <Plus className="inline h-3 w-3 mr-1" />{" "}
-                                        Додати even
+                                        Додати парну пару
                                       </button>
                                     ) : (
                                       <div className="h-3" />
