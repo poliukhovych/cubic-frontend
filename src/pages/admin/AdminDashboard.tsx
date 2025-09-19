@@ -3,7 +3,6 @@ import AdminQuickPanel from "@/components/AdminQuickPanel";
 import FacultyScheduleTable from "@/components/FacultyScheduleTable";
 import { useAuth } from "@/types/auth";
 import { getViewMode, setViewMode, type ViewMode } from "@/lib/utils/prefs";
-import { exportSchedulePdf } from "@/lib/utils/pdf";
 
 const AdminDashboard: React.FC = () => {
   const [isMobile, setIsMobile] = useState(false);
