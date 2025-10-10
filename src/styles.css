@@ -1,0 +1,726 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+body { font-family: Helvetica; }
+
+/* Glass effect styles */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.glass:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+html[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+html[data-theme="dark"] .glass {
+  background: rgba(20, 20, 24, 0.35);
+  border: 1px solid rgba(42, 42, 50, 0.18);
+
+  background: rgba(255, 255, 255, 0.048);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Cursor interaction styles */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-glow {
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cursor-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.cursor-glow:active {
+  transform: translateY(1px);
+}
+
+html[data-theme="light"] .glass {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+html[data-theme="dark"] .glass {
+  background: rgba(20, 20, 24, 0.6);
+  border: 1px solid rgba(42, 42, 50, 0.3);
+}
+
+/* ---------- Токени теми ---------- */
+:root {
+  /* Neutrals */
+  --surface: #0b0b0c;
+  --surface-2: #121214;
+  --card: oklch(1 0 0);
+  --border: oklch(0.922 0 0);
+  --text: #e9e9ef;
+  --muted: oklch(0.97 0 0);
+  --hero-dim: rgba(0,0,0,.6);
+  /* Brand */
+  --primary: oklch(0.205 0 0);
+  --primary-contrast: #0a0a0b;
+
+  /* States */
+  --success: #5ac18e;
+  --warning: #f5c04f;
+  --danger:  #ff6b6b;
+  --ring: oklch(0.708 0 0);
+
+  /* Radii / Shadows */
+  --r: 3rem;
+  --shadow: 0 0 10px rgba(0,0,0,.1);
+
+  /* Aurora defaults */
+  --aurora-size: 100vmax;
+  --aurora-1: rgba(110,168,254,0.2);
+  --aurora-2: rgba(34,211,238,0.3);
+  --aurora-3: rgba(56,189,248,0.3);
+  --aurora-4: rgba(99,102,241,0.3);
+  --aurora-5: rgba(37,99,235,0.2);
+  --aurora-6: rgba(16,185,129,0.2);
+  --aurora-7: rgba(147,197,253,0.1);
+  --aurora-8: rgba(59,130,246,0.2);
+
+  /* 🧷 фон для sticky-колонок */
+  --surface-1: color-mix(in oklab, var(--card), transparent 10%);
+
+  --sticky-z: 80;                 /* пріоритет липких колонок */
+  --col-day: 3rem;                /* 64px */
+  --col-pair: 3rem;               /* 48px */
+  --col-time: 3rem;               /* 112px */               --radius: 0.625rem;               --background: oklch(1 0 0);               --foreground: oklch(0.145 0 0);               --card-foreground: oklch(0.145 0 0);               --popover: oklch(1 0 0);               --popover-foreground: oklch(0.145 0 0);               --primary-foreground: oklch(0.985 0 0);               --secondary: oklch(0.97 0 0);               --secondary-foreground: oklch(0.205 0 0);               --muted-foreground: oklch(0.556 0 0);               --accent: oklch(0.97 0 0);               --accent-foreground: oklch(0.205 0 0);               --destructive: oklch(0.577 0.245 27.325);               --input: oklch(0.922 0 0);               --chart-1: oklch(0.646 0.222 41.116);               --chart-2: oklch(0.6 0.118 184.704);               --chart-3: oklch(0.398 0.07 227.392);               --chart-4: oklch(0.828 0.189 84.429);               --chart-5: oklch(0.769 0.188 70.08);               --sidebar: oklch(0.985 0 0);               --sidebar-foreground: oklch(0.145 0 0);               --sidebar-primary: oklch(0.205 0 0);               --sidebar-primary-foreground: oklch(0.985 0 0);               --sidebar-accent: oklch(0.97 0 0);               --sidebar-accent-foreground: oklch(0.205 0 0);               --sidebar-border: oklch(0.922 0 0);               --sidebar-ring: oklch(0.708 0 0);
+
+}
+html[data-theme="light"] {
+  --surface: #f7f7fb;
+  --surface-2: #ffffff;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #0b0b0c;
+  --muted: #555b68;
+  --primary: rgb(113, 167, 253);
+  --primary-contrast: #ffffff;
+  --ring: #3b82f666;
+  --hero-dim: rgba(0, 0, 0, 0.288);
+  --surface-1: color-mix(in oklab, var(--card), transparent 8%);
+  
+  /* Theme text colors */
+  --foreground: 0.145 0 0;
+  --background: 1 0 0;
+  --card-foreground: 0.145 0 0;
+  --popover-foreground: 0.145 0 0;
+  --primary-foreground: 1 0 0;
+  --secondary-foreground: 0.205 0 0;
+  --muted-foreground: 0.556 0 0;
+  --accent-foreground: 0.205 0 0;
+}
+html[data-theme="dark"] {
+  --surface: #0b0b0c;
+  --surface-2: #121214;
+  --card: #141418;
+  --border: #2a2a32;
+  --text: #e9e9ef;
+  --muted: #a9abb6;
+  --primary: rgb(79, 167, 255);
+  --primary-contrast: #0a0a0b;
+  --ring: #5297ff66;
+
+  /* трохи яскравіше в дарк (для аврори) */
+  --aurora-1: rgba(110,168,254,0.1);
+  --aurora-2: rgba(34,211,238,0.2);
+  --aurora-3: rgba(99,102,241,0.3);
+  --surface-1: color-mix(in oklab, var(--card), transparent 12%);
+  
+  /* Theme text colors */
+  --foreground: 0.98 0 0;
+  --background: 0.145 0 0;
+  --card-foreground: 0.98 0 0;
+  --popover-foreground: 0.98 0 0;
+  --primary-foreground: 0.145 0 0;
+  --secondary-foreground: 0.98 0 0;
+  --muted-foreground: 0.8 0 0;
+  --accent-foreground: 0.98 0 0;
+}
+
+/* ---------- База ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; }
+
+/* ---------- Reveal / Mount анімації ---------- */
+.reveal {
+  opacity: var(--reveal-opacity-from, 0);
+  transform: translateY(var(--reveal-translate, 12px));
+  transition-property: opacity, transform, filter;
+  transition-duration: 500ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+.reveal--blur { filter: blur(var(--reveal-blur, 0px)); }
+.reveal--in { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+/* Modern scroll reveal animations */
+.scroll-reveal {
+  opacity: 0;
+  transition-property: opacity, transform;
+  transition-duration: 700ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.scroll-reveal-visible {
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.header-mount {
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 500ms cubic-bezier(0.22,1,0.36,1),
+              transform 500ms cubic-bezier(0.22,1,0.36,1);
+}
+.header-mount--in { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .header-mount {
+    transition-duration: 1ms;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+/* ---------- Aurora фон ---------- */
+.aurora { 
+  position: fixed; 
+  inset: 0; 
+  z-index: -1; 
+  pointer-events: none; 
+  overflow: hidden; 
+  contain: layout paint size;
+  isolation: isolate;
+}
+.aurora-container {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 80%, transparent 100%);
+}
+.aurora__blob { 
+  position: absolute; 
+  width: var(--aurora-size); 
+  height: var(--aurora-size); 
+  border-radius: 9999px; 
+  opacity: .75;
+  background: radial-gradient(closest-side, var(--clr) 0%, rgba(0,0,0,0) 68%); 
+  will-change: transform;
+  animation: var(--motion, chaos-1) var(--dur, 28s) ease-in-out var(--delay, 0s) infinite alternate; 
+  transform: translate3d(0,0,0); 
+}
+.aurora__blob--1{ --clr: var(--aurora-1); left:-12vmax; top:-14vmax;   --motion: chaos-1; --dur:26s; --delay:-2s; }
+.aurora__blob--2{ --clr: var(--aurora-2); right:-14vmax; top:12vmax;   --motion: chaos-2; --dur:30s; --delay:-6s; }
+.aurora__blob--3{ --clr: var(--aurora-3); left:18vmax; bottom:-16vmax; --motion: chaos-3; --dur:34s; --delay:-10s;}
+.aurora__blob--4{ --clr: var(--aurora-4); right:8vmax; bottom:-10vmax; --motion: chaos-4; --dur:32s; --delay:-14s;}
+.aurora__blob--5{ --clr: var(--aurora-5); left:-8vmax; bottom:22vmax;  --motion: chaos-2; --dur:36s; --delay:-4s; }
+.aurora__blob--6{ --clr: var(--aurora-6); right:22vmax; top:-10vmax;   --motion: chaos-3; --dur:28s; --delay:-8s; }
+.aurora__blob--7{ --clr: var(--aurora-7); left:32vmax; top:18vmax;     --motion: chaos-4; --dur:38s; --delay:-12s;}
+.aurora__blob--8{ --clr: var(--aurora-8); right:-6vmax; bottom:28vmax; --motion: chaos-1; --dur:24s; --delay:-16s; }
+@keyframes chaos-1 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  30%{transform:translate3d(8vmax,-6vmax,0) scale(1.06) rotate(8deg)}
+  60%{transform:translate3d(-6vmax,7vmax,0) scale(1.03) rotate(-10deg)}
+  100%{transform:translate3d(10vmax,4vmax,0) scale(1.08) rotate(6deg)} }
+@keyframes chaos-2 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  25%{transform:translate3d(-9vmax,5vmax,0) scale(1.10) rotate(-6deg)}
+  55%{transform:translate3d(6vmax,-8vmax,0) scale(1.04) rotate(12deg)}
+  100%{transform:translate3d(-7vmax,-4vmax,0) scale(1.09) rotate(-4deg)} }
+@keyframes chaos-3 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  35%{transform:translate3d(11vmax,3vmax,0) scale(1.05) rotate(14deg)}
+  70%{transform:translate3d(-8vmax,-7vmax,0) scale(1.02) rotate(-8deg)}
+  100%{transform:translate3d(5vmax,10vmax,0) scale(1.07) rotate(10deg)} }
+@keyframes chaos-4 { 0%{transform:translate3d(0,0,0) scale(1) rotate(0)}
+  20%{transform:translate3d(7vmax,9vmax,0) scale(1.12) rotate(18deg)}
+  50%{transform:translate3d(-10vmax,-5vmax,0) scale(1.03) rotate(-12deg)}
+  100%{transform:translate3d(6vmax,-9vmax,0) scale(1.09) rotate(6deg)} }
+@media (max-width: 768px){ .aurora__blob{ opacity:.65; } .aurora__blob:nth-child(n+6){ display:none; } :root { --aurora-size: 130vmax; } }
+@media (prefers-reduced-motion: reduce){ .aurora__blob{ animation:none; transform:none; } }
+
+/* ---------- Дизайн-система (утиліти) ---------- */
+.card { @apply rounded-2xl border; border-color: color-mix(in oklab, var(--border), transparent 35%); background-color: rgb(from var(--card) r g b / 0.35); box-shadow: var(--shadow); }
+.glasscard { 
+  @apply border rounded-2xl; 
+  backdrop-filter: blur(12px); 
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgb(from var(--card) r g b / 0.40); 
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12); 
+  border-color: color-mix(in oklab, var(--border), transparent 35%);
+  transition: all 0.3s ease;
+}
+.glasscardnorounded { 
+  @apply border-t; 
+  backdrop-filter: blur(12px); 
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgb(from var(--card) r g b / 0.40); 
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12); 
+  border-color: color-mix(in oklab, var(--border), transparent 35%);
+  transition: all 0.3s ease;
+}
+.glasscardMd { 
+  @apply border rounded-2xl; 
+  backdrop-filter: blur(8px); 
+  -webkit-backdrop-filter: blur(8px);
+  background-color: rgb(from var(--card) r g b / 0.50); 
+  box-shadow: 0 0 36px rgba(0, 0, 0, 0.14); 
+  border-color: color-mix(in oklab, var(--border), transparent 30%);
+  transition: all 0.3s ease;
+}
+.glasscardToday { 
+  @apply border rounded-2xl relative; 
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background-color: rgb(from var(--card) r g b / 0.60); 
+  border-color: color-mix(in oklab, var(--primary), transparent 30%); 
+  box-shadow: 0 0 36px rgba(0, 0, 0, 0.18);
+  transition: all 0.3s ease;
+}
+
+.glass-card {
+  @apply border rounded-xl;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgb(from var(--card) r g b / 0.40);
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.12);
+  border-color: color-mix(in oklab, var(--border), transparent 35%);
+  transition: all 0.3s ease;
+}
+
+/* Buttons / Inputs / micro */
+.btn { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors select-none;
+  background-color: rgb(from var(--surface-2) r g b / 0.4); color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--border), transparent 20%); }
+.btn:hover { background-color: rgb(from var(--surface-2) r g b / 0.75); }
+.btn:disabled { opacity: .6; pointer-events: none; }
+.btn-primary { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 transition-colors; background-color: var(--primary); color: var(--primary-contrast); border: 1px solid transparent; }
+.btn-primary:hover { filter: brightness(1.03); }
+.input { @apply w-full rounded-2xl px-3 py-2 border outline-none; background-color: var(--surface-2); border-color: color-mix(in oklab, var(--border), transparent 35%); color: var(--text); }
+.input:focus { box-shadow: 0 0 0 3px var(--ring); }
+.text-primary { color: var(--primary); }
+.smooth { @apply transition-all; }
+.hover-lift:hover { transform: translateY(-1px); transition: transform 0.3s ease; }
+.hover-shadow:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.18); transition: box-shadow 0.3s ease; }
+.card-smooth { @apply transition-shadow; }
+.pressable:active { transform: translateY(0.5px); }
+
+/* --- iOS Safari glass fix --- */
+.glasscard, .glasscardnorounded { 
+  background-clip: padding-box; 
+  -webkit-mask-image: -webkit-radial-gradient(white, black); 
+  transform: translateZ(0); 
+  will-change: transform; 
+  isolation: isolate; 
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+.glasscardMd, .glasscardToday { 
+  background-clip: padding-box; 
+  -webkit-mask-image: -webkit-radial-gradient(white, black); 
+  transform: translateZ(0); 
+  will-change: transform; 
+  isolation: isolate; 
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+}
+.header-mount, .header-mount--in { 
+  -webkit-backface-visibility: hidden; 
+  backface-visibility: hidden; 
+  perspective: 1000px; 
+  contain: paint; 
+}
+html[data-theme="light"] .glasscard, html[data-theme="light"] .glasscardMd, html[data-theme="light"] .glasscardnorounded { 
+  border-color: color-mix(in oklab, var(--border), transparent 20%); 
+  color: var(--text);
+}
+html[data-theme="dark"] .glasscard, html[data-theme="dark"] .glasscardMd, html[data-theme="dark"] .glasscardnorounded { 
+  color: white;
+}
+@supports (-webkit-touch-callout: none) { .glasscard, .glasscardnorounded { -webkit-backdrop-filter: blur(12px); } .glasscardMd { -webkit-backdrop-filter: blur(8px); } }
+
+/* ---------- Градієнт-роздільник початку дня ---------- */
+:root{
+  --dayline-start: color-mix(in oklab, var(--primary) 40%, transparent);
+  --dayline-mid:   color-mix(in oklab, var(--primary) 70%, transparent);
+  --dayline-end:   color-mix(in oklab, var(--primary) 40%, transparent);
+}
+html[data-theme="light"]{
+  --dayline-start: color-mix(in oklab, var(--primary) 50%, transparent);
+  --dayline-mid:   color-mix(in oklab, var(--primary) 85%, transparent);
+  --dayline-end:   color-mix(in oklab, var(--primary) 50%, transparent);
+}
+.dayline {
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--dayline-start) 0%, var(--dayline-mid) 50%, var(--dayline-end) 100%);
+  box-shadow: 0 0 24px color-mix(in oklab, var(--dayline-mid), transparent 50%);
+}
+
+/* ---------- Sticky-колонки (фіксована ширина + фон + без щілин) ---------- */
+.sticky-base{
+  position: sticky;
+  z-index: var(--sticky-z);
+  background-color: var(--surface-1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-clip: padding-box;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* правий «патч», що перекриває субпіксельні щілини під час горизонтального скролу */
+.sticky-base::after{
+  content:"";
+  position:absolute;
+  top:0;
+  right:-1px;     /* трохи заходить на сусідню колонку */
+  width:2px;
+  bottom:0;
+  background: var(--surface-1);
+  pointer-events:none;
+}
+
+/* вигляд заголовків і клітинок перших трьох колонок */
+.th-sticky {
+  padding: .5rem;
+  color: var(--muted);
+  text-align: center;        /* горизонтально по центру */
+  vertical-align: middle;    /* вертикально по центру */
+  border-right: 1px solid color-mix(in oklab, var(--border), transparent 20%);
+}
+
+.td-sticky {
+  padding: .5rem;
+  text-align: center;        /* горизонтально по центру */
+  vertical-align: middle;    /* вертикально по центру */
+  border-right: 1px solid color-mix(in oklab, var(--border), transparent 20%);
+}
+
+/* фіксовані ширини та позиції */
+.th-day, .td-sticky.th-day { width: var(--col-day);  min-width: var(--col-day);  max-width: var(--col-day);  left: 0; }
+.th-pair,.td-sticky.th-pair{ width: var(--col-pair); min-width: var(--col-pair); max-width: var(--col-pair); left: var(--col-day); }
+.th-time,.td-sticky.th-time{ width: var(--col-time); min-width: var(--col-time); max-width: var(--col-time);
+  left: calc(var(--col-day) + var(--col-pair)); }
+
+/* застосувати sticky-базу до всіх трьох */
+.th-day, .th-pair, .th-time,
+.td-sticky.th-day, .td-sticky.th-pair, .td-sticky.th-time{
+  position: sticky; /* дублюємо явно */
+}
+.th-day.sticky-base, .th-pair.sticky-base, .th-time.sticky-base,
+.td-sticky.th-day.sticky-base, .td-sticky.th-pair.sticky-base, .td-sticky.th-time.sticky-base{}
+
+/* 🔽 важливо: картки під sticky-колонками не повинні «вилазити» тінями */
+.glasscard{ position: relative; z-index: 0; }
+
+/* =====================  Fancy Scrollbars  ===================== */
+/* Токени (можеш підкрутити кольори) */
+:root{
+  --scrollbar-size: 10px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track: color-mix(in oklab, var(--card), transparent 100%);
+  --scrollbar-thumb: color-mix(in oklab, var(--primary), transparent 65%);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--primary), transparent 45%);
+  --scrollbar-thumb-active: color-mix(in oklab, var(--primary), transparent 30%);
+}
+html[data-theme="light"]{
+  --scrollbar-track: color-mix(in oklab, var(--card), transparent 100%);
+  --scrollbar-thumb: color-mix(in oklab, var(--primary), transparent 55%);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--primary), transparent 35%);
+  --scrollbar-thumb-active: color-mix(in oklab, var(--primary), transparent 20%);
+}
+
+/* ---------- Глобально для всіх скролів ---------- */
+/* Firefox */
+*{
+  scrollbar-width: thin; /* auto|thin|none */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* WebKit (Chrome/Edge/Safari/Opera) */
+*::-webkit-scrollbar{
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: transparent; /* щоб не мигтіло */
+}
+*::-webkit-scrollbar-track{
+  background: var(--scrollbar-track);
+  border-radius: var(--scrollbar-radius);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border), transparent 40%);
+}
+*::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--scrollbar-thumb), transparent 10%),
+    var(--scrollbar-thumb)
+  );
+  border-radius: var(--scrollbar-radius);
+  border: 2px solid transparent;          /* робить «капсулу» */
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover{
+  background: var(--scrollbar-thumb-hover);
+}
+*::-webkit-scrollbar-thumb:active{
+  background: var(--scrollbar-thumb-active);
+}
+*::-webkit-scrollbar-corner{
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-button{
+  display:none;
+  width:0;
+  height:0;
+}
+
+/* Трохи стабільності макету: смуга не «стрибає» при появі */
+.scrollbar-stable{
+  scrollbar-gutter: stable both-edges;
+}
+
+/* ---------- Опційно: товстіший на hover лише в контейнері ---------- */
+.scrollarea{
+  /* старт трохи тонший, щоб не відволікав */
+  --scrollbar-size: 8px;
+  position: relative;
+}
+.scrollarea:hover{ --scrollbar-size: 12px; }
+
+/* ---------- Опційно: вимкнути кастом глабально для конкретного вузла ---------- */
+.scrollbar-default{
+  scrollbar-width: auto;
+    scrollbar-color: auto; /* <- додали */
+
+}
+.scrollbar-default::-webkit-scrollbar,
+.scrollbar-default *::-webkit-scrollbar{
+  width: initial; height: initial; background: initial;
+}
+.scrollbar-default::-webkit-scrollbar-track,
+.scrollbar-default::-webkit-scrollbar-thumb,
+.scrollbar-default::-webkit-scrollbar-corner{
+  background: initial; box-shadow: initial; border-radius: initial; border: initial;
+}
+
+/* Анімація без зайвого руху для тих, хто не любить motion */
+@media (prefers-reduced-motion: reduce){
+  .scrollarea:hover{ --scrollbar-size: 10px; }
+}
+
+/* ======= Суцільний заокруглений фон для перших 3 колонок ======= */
+.sticky-left{ position: relative; }
+
+/* Декоративний шар під клітинками */
+.sticky-left::before{
+  content: "";
+  position: sticky;
+  left: 0;
+  top: 0;
+  /* ширина трьох колонок */
+  width: calc(var(--col-day) + var(--col-pair) + var(--col-time));
+  /* висота = видима висота скрол-контейнера */
+  height: 100%;
+  /* фон та скло як у sticky-base */
+  background: var(--surface-1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  /* заокруглення лівого краю */
+  border-top-left-radius: var(--r);
+  border-bottom-left-radius: var(--r);
+  /* має бути під клітинками, але над рештою таблиці */
+  z-index: calc(var(--sticky-z) - 1);
+  pointer-events: none;
+  display: block;
+}
+
+/* Щоб не було «подвійного» фону — прозоримо самі sticky-клітинки всередині */
+.sticky-left .sticky-base{
+  background-color: transparent 70%;
+}
+.sticky-left .sticky-base::after{
+  /* прибираємо правий патч-піксель, бо фон вже суцільний */
+  background: transparent 70%;
+}
+.sticky-left::before{
+  box-shadow: inset -1px 0 0 color-mix(in oklab, var(--border), transparent 70%);
+}
+
+html.theme-switching *, 
+html.theme-switching *::before, 
+html.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+  /* Safari інколи мерехтить через blur */
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Рекомендується явно вказати підтримку обох колірних схем для нативних контролів */
+:root { color-scheme: light dark; }
+
+/* --- сірі лінії між парами --- */
+.pair-divider {
+  border-top: 1px solid color-mix(in oklab, var(--muted), transparent 55%);
+  /* якщо хочеш пунктир: */
+  /* border-top-style: dashed; */
+}
+td.pair-divider {
+  border-top: 1px solid color-mix(in oklab, var(--muted), transparent 55%);
+}
+
+/* На першому рядку дня лінія не потрібна */
+tbody tr:first-of-type > td.pair-divider {
+  border-top: none;
+}
+
+@theme inline { --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-ring: var(--sidebar-ring); }
+
+.dark { --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0); --card-foreground: oklch(0.985 0 0); --popover: oklch(0.205 0 0); --popover-foreground: oklch(0.985 0 0); --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0); --secondary: oklch(0.269 0 0); --secondary-foreground: oklch(0.985 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --accent: oklch(0.269 0 0); --accent-foreground: oklch(0.985 0 0); --destructive: oklch(0.704 0.191 22.216); --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.556 0 0); --chart-1: oklch(0.488 0.243 264.376); --chart-2: oklch(0.696 0.17 162.48); --chart-3: oklch(0.769 0.188 70.08); --chart-4: oklch(0.627 0.265 303.9); --chart-5: oklch(0.645 0.246 16.439); --sidebar: oklch(0.205 0 0); --sidebar-foreground: oklch(0.985 0 0); --sidebar-primary: oklch(0.488 0.243 264.376); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.269 0 0); --sidebar-accent-foreground: oklch(0.985 0 0); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: oklch(0.556 0 0); }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground; } }
+
+/* Dialog overlay styles for theme-aware background */
+.dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.8); /* Default dark overlay */
+}
+
+html[data-theme="light"] .dialog-overlay {
+  background-color: rgba(255, 255, 255, 0.8); /* Light overlay for light theme */
+}
+
+html[data-theme="dark"] .dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.8); /* Dark overlay for dark theme */
+}
+
+/* Custom dialog animation from button position */
+@keyframes dialog-in-from-button {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) translateY(150px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+}
+
+@keyframes dialog-out-to-button {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) translateY(150px);
+  }
+}
+
+.dialog-animate-in {
+  animation: dialog-in-from-button 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-animate-out {
+  animation: dialog-out-to-button 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom status badges for homework and grades */
+.status-done {
+  background-color: var(--primary);
+  background-color: color-mix(in oklch, var(--primary), transparent 80%);
+  border: 1px solid var(--primary);
+  color: var(--foreground);
+  border-radius: 9999px; /* rounded-full ефект */
+}
+
+.status-undone {
+  background-color: var(--muted);
+  background-color: color-mix(in oklch, var(--muted), transparent 60%);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  border-radius: 9999px; /* rounded-full ефект */
+}
+
+html[data-theme="light"] .status-undone {
+  background-color: color-mix(in oklch, white, var(--muted) 20%);
+  color: var(--foreground);
+}
+
+html[data-theme="dark"] .status-undone {
+  background-color: color-mix(in oklch, var(--surface), var(--muted) 30%);
+  color: var(--muted-foreground);
+}
+
+.status-grade {
+  background-color: var(--primary);
+  background-color: color-mix(in oklch, var(--primary), transparent 80%);
+  border: 1px solid var(--primary);
+  color: var(--foreground);
+  border-radius: 9999px; /* rounded-full ефект */
+}
+
+/* Custom chip with primary border */
+.chip-primary-border {
+  border-color: var(--primary) !important;
+}
+
+/* Glass effect for collapsed cards */
+.glass-collapsed {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+html[data-theme="light"] .glass-collapsed {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+html[data-theme="dark"] .glass-collapsed {
+  background: rgba(20, 20, 24, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}

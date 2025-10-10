@@ -1,0 +1,11 @@
+node_modules
+dist
+.docker
+.git
+.gitignore
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+.vscode
+.idea
+.DS_Store
