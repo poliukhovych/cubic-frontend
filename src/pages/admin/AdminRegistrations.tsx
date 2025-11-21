@@ -30,6 +30,7 @@ export default function AdminRegistrations() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "student" | "teacher">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Модальні вікна
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -67,6 +68,11 @@ export default function AdminRegistrations() {
       filtered = filtered.filter((r) => r.role === roleFilter);
     }
 
+    // Фільтр за статусом
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => r.status === statusFilter);
+    }
+
     // Пошук
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -80,7 +86,7 @@ export default function AdminRegistrations() {
     }
 
     setFilteredRegistrations(filtered);
-  }, [searchQuery, roleFilter, registrations]);
+  }, [searchQuery, roleFilter, statusFilter, registrations]);
 
   // ==================== EDIT ====================
   function handleOpenEdit(registration: RegistrationRequest) {
@@ -174,6 +180,17 @@ export default function AdminRegistrations() {
               <option value="all">Всі ролі</option>
               <option value="student">Студенти</option>
               <option value="teacher">Викладачі</option>
+            </select>
+
+            <select
+              className="input w-full sm:w-[180px]"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "all" | "pending" | "approved" | "rejected")}
+            >
+              <option value="all">Всі статуси</option>
+              <option value="pending">Очікує</option>
+              <option value="approved">Схвалено</option>
+              <option value="rejected">Відхилено</option>
             </select>
           </div>
         </div>

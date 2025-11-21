@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import { startGoogleOAuth } from "@/lib/googleAuth";
 
 export type Role = "student" | "teacher" | "admin";
@@ -180,17 +180,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // ----------- DEV-ONLY: миттєвий логін за роллю -----------
-  const loginAs = useCallback((role: Role) => {
+  const loginAs = useCallback(async (role: Role) => {
     if (!DEV_AUTH) return;
-    const fake: User = {
-      id: `dev-${role}`,
-      name: role.toUpperCase(),
-      email: `${role}@dev.local`,
-      role,
-      status: "active",
-    };
-    setUser(fake);
-    saveStoredUser(fake);
+    
+    // Для адміністратора виконуємо автоматичний логін через API
+    if (role === "admin") {
+      try {
+        // Виконуємо автоматичний логін адміністратора
+        const apiBase = API_BASE || 'http://localhost:8000';
+        const response = await fetch(`${apiBase}/api/auth/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
+            password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123'
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // API повертає accessToken (camelCase) або access_token (snake_case)
+          const token = data.accessToken || data.access_token;
+          
+          if (!token) {
+            throw new Error('No access token in response');
+          }
+          
+          // Зберігаємо токен
+          localStorage.setItem('access_token', token);
+          localStorage.setItem('cubic_token', token);
+          
+          // Створюємо користувача адміністратора
+          const userData = data.user || {};
+          const adminUser: User = {
+            id: userData.user_id || userData.id || 'admin-1',
+            name: userData.name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Admin',
+            email: userData.email || 'admin@example.com',
+            role: 'admin',
+            status: "active",
+          };
+          
+          // Зберігаємо дані користувача
+          localStorage.setItem('user', JSON.stringify(adminUser));
+          localStorage.setItem('cubic_role', 'admin');
+          
+          setUser(adminUser);
+          saveStoredUser(adminUser);
+          
+          // Оновлюємо стан після збереження токену
+          await refreshMe();
+          
+          console.log('[AUTH][DEV] Admin auto-login successful:', { token: token.substring(0, 20) + '...', user: adminUser });
+        } else {
+          // Якщо API не працює, показуємо помилку
+          const errorText = await response.text();
+          console.warn('Admin login failed:', response.status, errorText);
+          
+          // Не використовуємо фейкові дані, бо вони не працюватимуть з реальним API
+          throw new Error(`Admin login failed: ${response.status} ${errorText}`);
+        }
+      } catch (error) {
+        // Якщо помилка, показуємо повідомлення
+        console.error('Admin login error:', error);
+        // Не використовуємо фейкові дані, бо вони не працюватимуть з реальним API
+        alert(`Помилка автоматичного логіну адміністратора: ${error instanceof Error ? error.message : 'Невідома помилка'}\n\nПеревірте:\n1. Чи налаштовані ADMIN_USERNAME та ADMIN_PASSWORD на бекенді\n2. Чи працює бекенд\n3. Спробуйте увійти через /admin/login`);
+        throw error;
+      }
+    } else {
+      // Для студентів та викладачів використовуємо фейкові дані
+      const fake: User = {
+        id: `dev-${role}`,
+        name: role.toUpperCase(),
+        email: `${role}@dev.local`,
+        role,
+        status: "active",
+      };
+      setUser(fake);
+      saveStoredUser(fake);
+    }
   }, []);
 
   const value: AuthCtx = useMemo(

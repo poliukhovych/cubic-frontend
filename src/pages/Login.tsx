@@ -138,9 +138,17 @@ const Login: React.FC = () => {
                 className="w-full"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  loginAs("admin");
-                  nav(isPathAllowedForRole(next, "admin") ? next : ROLE_HOME["admin"], { replace: true });
+                onClick={async () => {
+                  try {
+                    await loginAs("admin");
+                    // Невелика затримка для завершення логіну
+                    setTimeout(() => {
+                      nav(isPathAllowedForRole(next, "admin") ? next : ROLE_HOME["admin"], { replace: true });
+                    }, 100);
+                  } catch (error) {
+                    console.error('Failed to login as admin:', error);
+                    // Не перенаправляємо при помилці
+                  }
                 }}
               >
                 DEV: Адмін

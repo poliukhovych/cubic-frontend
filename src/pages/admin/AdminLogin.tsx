@@ -4,7 +4,7 @@ import { adminLogin } from '@/lib/auth';
 import { useAuth } from '@/types/auth';
 
 // ✅ DEV MODE: fake login без бекенду
-const DEV_MODE = true; // Постав false коли бекенд буде готовий
+const DEV_MODE = false; // Використовуємо реальний API
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -24,9 +24,18 @@ export default function AdminLogin() {
       if (DEV_MODE) {
         if (username.trim() === 'admin' && password === 'admin') {
           // Зберігаємо фейкові дані в localStorage
-          localStorage.setItem('cubic_token', 'fake-admin-token');
+          // Зберігаємо обидва ключі для сумісності
+          const fakeToken = 'fake-admin-token';
+          localStorage.setItem('access_token', fakeToken);
+          localStorage.setItem('cubic_token', fakeToken);
           localStorage.setItem('cubic_role', 'admin');
           localStorage.setItem('cubic_user', JSON.stringify({
+            id: 'admin-1',
+            email: 'admin@cubic.ua',
+            name: 'Admin User',
+            role: 'admin'
+          }));
+          localStorage.setItem('user', JSON.stringify({
             id: 'admin-1',
             email: 'admin@cubic.ua',
             name: 'Admin User',
