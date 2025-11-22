@@ -1,6 +1,9 @@
+// src/components/AdminQuickPanel.tsx
+
 import React, { useEffect, useState } from "react";
-import { fetchAdminStats, pushAdminChange } from "@/lib/fakeApi/admin";
-import { Users, BookOpen, Archive } from "lucide-react";
+import { fetchAdminStats as fetchAdminStatsReal } from "@/lib/api/admin";
+import { generateScheduleApi, type GenerateSchedulePayload } from "@/lib/api/schedule-api";
+import { Users, BookOpen, Archive, IdCard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import ViewModeToggle from "./ViewModeToggle";
 import Toast from "@/components/Toast";
@@ -35,14 +38,24 @@ const StatTile: React.FC<{
 const AdminQuickPanel: React.FC<{
   value: ViewMode;
   onChange: (m: ViewMode) => void;
-}> = ({ value, onChange }) => {
+  onScheduleGenerated?: (scheduleId: string) => void; // 🔹 NEW: callback після генерації
+}> = ({ value, onChange, onScheduleGenerated }) => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const nav = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
+  const [solving, setSolving] = useState(false);
 
   useEffect(() => {
-    fetchAdminStats().then(setStats);
+    fetchAdminStatsReal()
+      .then((s) =>
+        setStats({
+          students: s.students_total,
+          teachers: s.teachers_total,
+          courses: s.courses_total,
+        }),
+      )
+      .catch(() => setStats(null));
   }, []);
 
   useEffect(() => {
@@ -54,12 +67,66 @@ const AdminQuickPanel: React.FC<{
 
   const flash = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 1000);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSolveClick = async () => {
+    if (solving) return;
+    setSolving(true);
+
+    try {
+      // 🔹 Захардкоджені параметри (можна винести в конфіг пізніше)
+      const payload: GenerateSchedulePayload = {
+        policy: {
+          soft_weights: {
+            daily_load_balance: 10,
+            windows_penalty: 20,
+            teacher_avoid_slots_penalty: 50,
+            teacher_preferred_days_penalty: 15,
+          },
+        },
+        params: {
+          timeLimitSec: 20,
+        },
+        schedule_label: `Розклад ${new Date().toLocaleDateString("uk-UA")} ${new Date().toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`,
+      };
+
+      console.log("🚀 Генерація розкладу...", payload);
+
+      const response = await generateScheduleApi(payload);
+
+      console.log("✅ Розклад згенеровано:", response);
+
+      const scheduleArray = response.schedule || [];
+
+      localStorage.setItem(
+        "last_generated_schedule",
+        JSON.stringify({
+          message: response.message,
+          schedule: scheduleArray,
+        })
+      );
+
+      flash(
+        `Розклад успішно створено! Згенеровано ${scheduleArray.length} призначень.`
+      );
+
+      // 🔹 Викликаємо callback, щоб батьківський компонент оновив таблицю
+      if (onScheduleGenerated) {
+        onScheduleGenerated("latest");
+      }
+    } catch (e: any) {
+      console.error("❌ Помилка генерації розкладу:", e);
+      const errorMsg = e?.detail || e?.message || "Не вдалося згенерувати розклад";
+      flash(`Помилка: ${errorMsg}`);
+    } finally {
+      setSolving(false);
+    }
   };
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {!isMobile && (
           <ViewModeToggle
             value={value}
@@ -68,7 +135,7 @@ const AdminQuickPanel: React.FC<{
               flash(
                 m === "view"
                   ? "Увімкнено режим перегляду"
-                  : "Увімкнено режим редагування"
+                  : "Увімкнено режим редагування",
               );
             }}
           />
@@ -100,52 +167,51 @@ const AdminQuickPanel: React.FC<{
           subtitle="Знімки, історія, PDF"
           icon={<Archive className="h-8 w-8 text-primary" />}
         />
+        <StatTile
+          to="/admin/registrations"
+          title="Заявки на реєстрацію"
+          subtitle="Перегляд / керування"
+          icon={<IdCard className="h-8 w-8 text-primary" />}
+        />
       </div>
 
       {!isMobile && (
-  <div className="mt-4">
-    <Crossfade stateKey={value}>
-      {value === "view" ? (
-        <Reveal y={6} opacityFrom={0}>
-          <ExportButtons
-            onExportAll={() => flash("Експорт усього розкладу")}
-            onExportCourse={() => flash("Експорт обраного курсу")}
-            onExportLevel={() => flash("Експорт бакалаврів / магістрів")}
-          />
-        </Reveal>
-      ) : (
-<Reveal y={6} opacityFrom={0}>
-          <div className="grid gap-3 sm:grid-cols-3">
-                <button
-                  className="btn py-3 rounded-2xl hover-shadow"
-                  onClick={async () => {
-                    await pushAdminChange({
-                      entity: "schedule",
-                      action: "updated",
-                      title: "Швидке редагування розкладу (solve)",
-                      actor: "Admin",
-                    });
-                    flash("solve is done");
-                  }}
-                >
-                  Вирішити
-                </button>
-                <button
-                  className="btn py-3 rounded-2xl hover-shadow"
-                  onClick={() => flash("optimize is done")}
-                >
-                  Оптимізувати
-                </button>
-                <button
-                  className="btn py-3 rounded-2xl hover-shadow"
-                  onClick={() => nav("/admin/logs")}
-                >
-                  Логи
-                </button>
-              </div>
-            </Reveal>
-          )}
-           </Crossfade>
+        <div className="mt-4">
+          <Crossfade stateKey={value}>
+            {value === "view" ? (
+              <Reveal y={6} opacityFrom={0}>
+                <ExportButtons
+                  onExportAll={() => flash("Експорт усього розкладу")}
+                  onExportCourse={() => flash("Експорт обраного курсу")}
+                  onExportLevel={() => flash("Експорт бакалаврів / магістрів")}
+                />
+              </Reveal>
+            ) : (
+              <Reveal y={6} opacityFrom={0}>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <button
+                    className="btn py-3 rounded-2xl hover-shadow"
+                    onClick={handleSolveClick}
+                    disabled={solving}
+                  >
+                    {solving ? "Генеруємо..." : "Вирішити"}
+                  </button>
+                  <button
+                    className="btn py-3 rounded-2xl hover-shadow"
+                    onClick={() => flash("Оптимізація поки не реалізована")}
+                  >
+                    Оптимізувати
+                  </button>
+                  <button
+                    className="btn py-3 rounded-2xl hover-shadow"
+                    onClick={() => nav("/admin/logs")}
+                  >
+                    Логи
+                  </button>
+                </div>
+              </Reveal>
+            )}
+          </Crossfade>
         </div>
       )}
 

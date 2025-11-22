@@ -4,7 +4,7 @@ import { config } from "@/config/runtime";
 export const API_BASE = config.API_BASE_URL;
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-type Json = Record<string, unknown> | undefined;
+type Json = object | null | undefined;
 
 async function request<T>(
   path: string,
@@ -12,11 +12,15 @@ async function request<T>(
 ): Promise<T> {
   const { method = "GET", body, headers } = opts;
 
+  // Get JWT token from localStorage (support both access_token and cubic_token for dev mode)
+  const token = localStorage.getItem('access_token') || localStorage.getItem('cubic_token');
+  
   const res = await fetch(API_BASE + path, {
     method,
     credentials: "include",
     headers: {
       ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,

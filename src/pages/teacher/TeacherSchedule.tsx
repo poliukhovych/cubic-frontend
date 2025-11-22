@@ -10,6 +10,7 @@ import Crossfade from "@/components/Crossfade";
 import WeekPickerCard from "@/components/WeekPickerCard";
 import WeekCalendar from "@/components/WeekCalendar";
 import LessonCard from "@/components/LessonCard";
+import Spinner from "@/components/Spinner";
 
 const TeacherSchedule: React.FC = () => {
   const { user } = useAuth();
@@ -36,7 +37,7 @@ const TeacherSchedule: React.FC = () => {
     setWeek((w) => Math.max(1, Math.min(total, w)));
   }, [data]);
 
-  if (!data) return <div className="text-[var(--muted)]">Завантаження...</div>;
+  if (!data) return <Spinner />;
   const totalWeeks: number = (data as any).totalWeeks ?? 16;
 
   return (

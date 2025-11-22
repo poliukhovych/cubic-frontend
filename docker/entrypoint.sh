@@ -1,15 +1,19 @@
-#!/bin/sh
+﻿#!/bin/sh
 set -e
 
-# Значення за замовчуванням
-: "${APP_BASE_PATH:=/cubic-frontend}"
+# Default values
+: "${APP_BASE_PATH:=/}"
 : "${API_BASE_URL:=}"
+: "${GOOGLE_CLIENT_ID:=}"
+: "${GOOGLE_REDIRECT_URI:=}"
 
-# Генеруємо runtime конфіг (config.js) із змінних оточення
+# Generate runtime config (config.js) from environment variables
 envsubst '
-  $APP_BASE_PATH
-  $API_BASE_URL
-' < /config.template.js > "/usr/share/nginx/html${APP_BASE_PATH}/config.js"
+	$APP_BASE_PATH
+	$API_BASE_URL
+    $GOOGLE_CLIENT_ID
+    $GOOGLE_REDIRECT_URI
+' < /config.template.js > "/usr/share/nginx/html/config.js"
 
-# Запускаємо nginx
+# Start nginx
 exec nginx -g 'daemon off;'

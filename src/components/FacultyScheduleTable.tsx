@@ -1,12 +1,5 @@
 // src/components/FacultyScheduleTable.tsx
 import React, { useEffect, useMemo, useState, useLayoutEffect } from "react";
-import {
-  fetchFacultySchedule,
-  saveFacultySchedule,
-  filterFacultyLessons,
-  fetchTeachers,
-  createScheduleSnapshot,
-} from "@/lib/fakeApi/admin";
 import type { FacultyLesson, Parity } from "@/types/schedule";
 import type { Teacher } from "@/types/teachers";
 import { useAuth } from "@/types/auth";
@@ -25,7 +18,24 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import NiceSelect from "@/ui/NiceSelect";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { fetchTeachersApi } from "@/lib/api/teachers-api";
+import { fetchGroupsApi } from "@/lib/api/groups-api";
+import { fetchCoursesApi } from "@/lib/api/courses-api";
+import { getDefaultTimeslotMap } from "@/lib/api/timeslots-api";
+
+import {
+  saveFacultySchedule,
+  filterFacultyLessons,
+  createScheduleSnapshot,
+} from "@/lib/fakeApi/admin";
 
 /* ----- константи часу та днів (4 пари) ----- */
 const TIMES: Record<1 | 2 | 3 | 4, { start: string; end: string }> = {
@@ -364,6 +374,94 @@ const SelectorRow: React.FC<{
   </div>
 );
 
+async function convertAssignmentsToLessons(
+  assignments: Array<{
+    timeslotId: number;
+    groupId: string;
+    courseId: string;
+    teacherId: string;
+    roomId: string;
+    courseType: string;
+  }>
+): Promise<FacultyLesson[]> {
+  console.log("📥 Converting assignments to lessons...", assignments.length);
+
+  // Завантажити всі необхідні дані
+  const timeslotMap = getDefaultTimeslotMap();
+
+  const [teachersResp, groupsResp, coursesResp] = await Promise.all([
+    fetchTeachersApi(),
+    fetchGroupsApi(),
+    fetchCoursesApi(),
+  ]);
+
+  // Побудувати map-и для швидкого пошуку. Частина API вже повертає масиви сущностей,
+  // тому нормалізуємо їх «на місці», не покладаючись на властивості типу .teachers тощо.
+  const teacherMap = new Map<string, any>(
+    ((teachersResp as any)?.teachers || teachersResp || []).map((t: any) => [
+      t.teacher_id || t.id,
+      t,
+    ])
+  );
+
+  const groupMap = new Map<string, any>(
+    ((groupsResp as any)?.groups || groupsResp || []).map((g: any) => [
+      g.group_id || g.id,
+      g,
+    ])
+  );
+
+  const courseMap = new Map<string, any>(
+    ((coursesResp as any)?.courses || coursesResp || []).map((c: any) => [
+      c.course_id || c.id,
+      c,
+    ])
+  );
+
+  console.log("📊 Data loaded:", {
+    timeslots: timeslotMap.size,
+    teachers: teacherMap.size,
+    groups: groupMap.size,
+    courses: courseMap.size,
+  });
+
+  // Конвертувати кожен assignment
+  const lessons: FacultyLesson[] = assignments.map((assignment, idx) => {
+    const timeslot = timeslotMap.get(assignment.timeslotId);
+    const teacher = teacherMap.get(assignment.teacherId);
+    const group = groupMap.get(assignment.groupId);
+    const course = courseMap.get(assignment.courseId);
+    if (!timeslot) {
+      console.warn(
+        `⚠️  Timeslot ${assignment.timeslotId} not found for assignment ${idx}`
+      );
+    }
+
+    const lesson: FacultyLesson = {
+      id: `${assignment.courseId}_${assignment.groupId}_${idx}`,
+      weekday: timeslot?.weekday || 1,
+      pair: timeslot?.pair || 1,
+      parity: timeslot?.parity || "any",
+      time: timeslot?.time || { start: "08:30", end: "10:05" },
+      course: 1, // TODO: визначити курс з groupId або group.name
+      level: "bachelor", // TODO: визначити рівень з group або course
+      group: group?.name || assignment.groupId,
+      subject: course?.name || assignment.courseId,
+      teacher: teacher?.name || teacher?.full_name
+        || (teacher?.last_name && teacher?.first_name
+          ? `${teacher.last_name} ${teacher.first_name}`
+          : assignment.teacherId),
+      location: assignment.roomId,
+      pinned: false,
+    };
+
+    return lesson;
+  });
+
+  console.log("✅ Converted", lessons.length, "lessons");
+  return lessons;
+}
+
 const FacultyScheduleTable: React.FC<{
   editable: boolean;
   lessons?: FacultyLesson[]; // якщо передали — не фетчимо з fakeApi
@@ -429,16 +527,75 @@ const FacultyScheduleTable: React.FC<{
 
   /* ---------- дані ---------- */
   useEffect(() => {
+    // Якщо lessons передано ззовні (props) - використовуємо їх
     if (lessons) {
       setAllLessons(lessons);
-      return; // зовнішній режим: нічого не фетчимо
+      return;
     }
-    fetchFacultySchedule(level).then(setAllLessons);
-  }, [level, lessons]);
+
+    // Інакше завантажуємо з localStorage (після генерації)
+    const loadSchedule = async () => {
+      try {
+        console.log("🔄 Loading schedule from last generation...");
+        
+        const lastScheduleJson = localStorage.getItem("last_generated_schedule");
+        
+        if (!lastScheduleJson) {
+          console.warn("⚠️  No generated schedule found, table will be empty");
+          setAllLessons([]);
+          return;
+        }
+
+        const scheduleData = JSON.parse(lastScheduleJson);
+        console.log("📊 Schedule data:", scheduleData);
+
+        if (!scheduleData.schedule || scheduleData.schedule.length === 0) {
+          console.warn("⚠️  Schedule has no assignments");
+          setAllLessons([]);
+          return;
+        }
+
+        // Конвертувати backend assignments → FacultyLesson[]
+        const convertedLessons = await convertAssignmentsToLessons(
+          scheduleData.schedule
+        );
+        console.log("📅 Converted lessons:", convertedLessons);
+
+        setAllLessons(convertedLessons);
+      } catch (err) {
+        console.error("❌ Failed to load schedule:", err);
+        setAllLessons([]);
+        
+        // Опціонально: fallback на fake API
+        // import { SEED_BACHELOR } from "@/lib/fakeApi/facultyScheduleSeed";
+        // setAllLessons(SEED_BACHELOR);
+      }
+    };
+
+    loadSchedule();
+  }, [level, lessons]); // Перезавантажувати при зміні level або lessons
 
   useEffect(() => {
-    fetchTeachers().then(setTeachers);
+    const loadTeachers = async () => {
+      try {
+        const teachersList = await fetchTeachersApi();
+        setTeachers(
+          (teachersList ?? []).map((t: any) => ({
+            id: t.teacher_id || t.id,
+            name: t.name || `${t.last_name ?? ""} ${t.first_name ?? ""}`.trim(),
+            subjects: Array.isArray(t.subjects) ? t.subjects : [],
+            status: t.status,
+          }))
+        );
+      } catch (err) {
+        console.error("❌ Failed to load teachers:", err);
+        setTeachers([]);
+      }
+    };
+
+    loadTeachers();
   }, []);
+
 
   useEffect(() => {
     if (snapOpen) {

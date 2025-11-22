@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookOpen, ExternalLink, Video, FileText, Mail, Calendar, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClassroomIcon } from "@/components/ClassroomIcon";
+import Spinner from "@/components/Spinner";
 
 const Chip: React.FC<{ children: React.ReactNode; variant?: "default" | "secondary" | "destructive" | "outline"; className?: string }> = ({ children, variant = "secondary", className }) => (
   <Badge variant={variant} className={`text-xs font-medium ${className || ""}`}>{children}</Badge>
@@ -52,7 +53,7 @@ const StudentSubject: React.FC = () => {
     return { sumPoints, sumMax: sumMaxVal > 0 ? sumMaxVal : undefined, countGrades: grades.length };
   }, [grades]);
 
-  if (!data) return <div className="text-[var(--muted)]">Завантаження...</div>;
+  if (!data) return <Spinner />;
 
   const classroomUrl =
     data?.upcomingHomework.find(h => h.classroomUrl)?.classroomUrl ||

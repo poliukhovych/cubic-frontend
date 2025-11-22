@@ -1,5 +1,6 @@
 // src/pages/admin/AdminDashboard.tsx
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState  } from "react";
 import AdminQuickPanel from "@/components/AdminQuickPanel";
 import FacultyScheduleTable from "@/components/FacultyScheduleTable";
 import { useAuth } from "@/types/auth";
@@ -12,6 +13,7 @@ const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const uid = user?.id ?? "";
   const [mode, setMode] = useState<ViewMode>(() => (uid ? getViewMode(uid) : "view"));
+  const [scheduleKey, setScheduleKey] = useState(0); // 🔹 NEW: ключ для перезавантаження таблиці
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -29,6 +31,13 @@ const AdminDashboard: React.FC = () => {
     if (uid) setViewMode(uid, m);
   };
 
+  // 🔹 NEW: Callback після успішної генерації розкладу
+  const handleScheduleGenerated = (scheduleId: string) => {
+    console.log("📅 Новий розклад згенеровано:", scheduleId);
+    // Перезавантажуємо таблицю розкладу через зміну ключа
+    setScheduleKey((prev) => prev + 1);
+  };
+
   const tableRef = React.useRef<HTMLDivElement>(null);
 
   return (
@@ -38,15 +47,19 @@ const AdminDashboard: React.FC = () => {
       </Reveal>
 
       <Reveal delayMs={100} y={6} opacityFrom={1}>
-        <AdminQuickPanel value={mode} onChange={onModeChange} />
+        <AdminQuickPanel
+          value={mode}
+          onChange={onModeChange}
+          onScheduleGenerated={handleScheduleGenerated} // 🔹 NEW
+        />
       </Reveal>
 
       <Crossfade stateKey={isMobile ? "mobile" : "desktop"}>
         {isMobile ? (
           <Reveal className="glasscard p-6 text-center space-y-3" y={8} opacityFrom={1}>
             <div className="text-lg font-semibold">Розклад недоступний на мобільних пристроях</div>
-            <div className="text-sm text-[var(--muted)] ">
-              Будь ласка, відкрийте цю сторінку з комп’ютера або скористайтесь експортом у PDF.
+            <div className="text-sm text-[var(--muted)]">
+              Будь ласка, відкрийте цю сторінку з комп'ютера або скористайтесь експортом у PDF.
             </div>
             <button className="btn py-2 px-4 rounded-xl hover-lift">Експорт у PDF</button>
           </Reveal>
@@ -57,7 +70,8 @@ const AdminDashboard: React.FC = () => {
             opacityFrom={1}
           >
             <div ref={tableRef}>
-              <FacultyScheduleTable editable={mode !== "view"} />
+              {/* 🔹 NEW: key={scheduleKey} примусово перезавантажує таблицю */}
+              <FacultyScheduleTable key={scheduleKey} editable={mode !== "view"} />
             </div>
             <div className="mt-3 flex justify-end">{/* PDF export button (optional) */}</div>
           </Reveal>

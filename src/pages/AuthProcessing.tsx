@@ -22,11 +22,26 @@ const AuthProcessing: React.FC = () => {
         if (user.status === "pending_approval"){ nav("/", { replace: true }); return;}
         if (user.status === "disabled"){ nav("/", { replace: true }); return;}
 
+        // If frontend stored a desired next path before OAuth, use it if allowed by role
+        let next: string | null = null;
+        try { next = sessionStorage.getItem('oauth_next'); sessionStorage.removeItem('oauth_next'); } catch {}
 
-        // Active: route by role
-        if (user.role === "student") {nav("/student/dashboard", { replace: true }); return;}
-        if (user.role === "teacher") {nav("/teacher/dashboard", { replace: true }); return;}
-        if (user.role === "admin") {nav("/admin/dashboard", { replace: true }); return;}
+        const role = user.role;
+        if (role === "student") {
+            const fallback = "/student/dashboard";
+            nav(next || fallback, { replace: true });
+            return;
+        }
+        if (role === "teacher") {
+            const fallback = "/teacher/dashboard";
+            nav(next || fallback, { replace: true });
+            return;
+        }
+        if (role === "admin") {
+            const fallback = "/admin/dashboard";
+            nav(next || fallback, { replace: true });
+            return;
+        }
 
 
         // Fallback

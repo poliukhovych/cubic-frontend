@@ -3,8 +3,9 @@ import type { Id } from "./common";
 
 export type Course = {
   id: Id;
-  code: string;        // напр. "DB101"
-  title: string;       // напр. "Бази даних"
-  groupIds: Id[];      // групи, що відвідують
+  code: string; // напр. "DB101"
+  title: string; // напр. "Бази даних"
+  groupIds: Id[]; // групи, що відвідують
   teacherId?: Id | null;
+  duration?: number; // тривалість у годинах (з бекенду)
 };

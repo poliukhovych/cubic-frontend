@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookOpen, ExternalLink, Video, FileText, Users, ArrowUpDown, Mail, Calendar } from "lucide-react";
 import { ClassroomIcon } from "@/components/ClassroomIcon";
+import Spinner from "@/components/Spinner";
 
 
 const Chip: React.FC<{ children: React.ReactNode; variant?: "default" | "secondary" | "destructive" | "outline"; className?: string }> = ({ children, variant = "secondary", className }) => (
@@ -94,7 +95,7 @@ function ariaFor(key: SortKey): React.AriaAttributes["aria-sort"] {
     data?.upcomingHomework.find(h => h.classroomUrl)?.classroomUrl ||
     data?.recentGrades.find(g => g.classroomUrl)?.classroomUrl;
 
-  if (!data) return <div className="text-[var(--muted)]">Завантаження...</div>;
+  if (!data) return <Spinner />;
 
 
   return (

@@ -9,6 +9,7 @@ import WeekPickerCard from "@/components/WeekPickerCard";
 import WeekCalendar from "@/components/WeekCalendar";
 import LessonCard from "@/components/LessonCard";
 import { motion, AnimatePresence } from "framer-motion";
+import Spinner from "@/components/Spinner";
 
 const StudentSchedule: React.FC = () => {
   const { user } = useAuth();
@@ -45,7 +46,7 @@ const weekStart = React.useMemo(
     setWeek((w) => Math.max(1, Math.min(total, w)));
   }, [data]);
 
-  if (!data) return <div className="text-[var(--muted)]">Завантаження...</div>;
+  if (!data) return <Spinner />;
   const totalWeeks: number = (data as any).totalWeeks ?? 16;
 
   return (

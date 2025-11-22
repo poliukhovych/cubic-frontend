@@ -80,7 +80,7 @@ export async function fetchTeacherSchedule(teacherId: string): Promise<TeacherSc
 }
 // Утиліта створення студента
 const S = (fullName: string, email: string, groupId: string, subgroup?: "a" | "b"): Student =>
-  ({ id: uid(), name: fullName, email, groupId, subgroup });
+  ({ id: uid(), name: fullName, email, groupId, subgroup, status: "active" });
 
 export async function fetchMyStudents(teacherId: string): Promise<Student[]> {
   // ІПС-11: дві підгрупи по 12 → разом 24 (у межах 20–30 на групу, 10–15 на підгрупу)

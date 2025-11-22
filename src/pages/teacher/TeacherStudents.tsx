@@ -253,7 +253,7 @@ const TeacherStudents: React.FC = () => {
         s.name,
         s.email ?? "",
         String(s.groupId ?? ""),
-        s.subgroup ?? "",
+        String(s.subgroup ?? ""),
       ]);
     });
     const name = `students-${slug(bucket.label)}.csv`;
@@ -265,7 +265,7 @@ const TeacherStudents: React.FC = () => {
     const sorted = bucket.students.slice().sort((a, b) => a.name.localeCompare(b.name, "uk"));
     const rows: string[][] = [
       ["№", "ПІБ", "Email", "Група", "Підгрупа"],
-      ...sorted.map((s, i) => [String(i + 1), s.name, s.email ?? "", String(s.groupId ?? ""), s.subgroup ?? ""]),
+      ...sorted.map((s, i) => [String(i + 1), s.name, s.email ?? "", String(s.groupId ?? ""), String(s.subgroup ?? "")]),
     ];
     const toTsv = (r: string[][]) => r.map(row => row.map(v => (v ?? "").replace(/\t/g, " ")).join("\t")).join("\r\n");
     const tsv = toTsv(rows);

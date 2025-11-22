@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { api, API_BASE } from "@/lib/api";
+import { startGoogleOAuth } from "@/lib/googleAuth";
 
 export type Role = "student" | "teacher" | "admin";
 export type UserStatus = "active" | "pending_profile" | "pending_approval" | "disabled";
@@ -22,23 +23,21 @@ export type User = {
 
 type AuthCtx = {
   user: User | null;
-  initializing: boolean; // перший автологін / перевірка сесії
-  loading: boolean; // запити типу logout тощо
-  loginWithGoogle: () => void; // PROD: редірект на бекенд
-  refreshMe: () => Promise<void>; // підтягнути сесію з cookie
+  initializing: boolean;
+  loading: boolean;
+  loginWithGoogle: () => void;
+  refreshMe: () => Promise<void>;
   logout: () => Promise<void>;
-  /** DEV-тільки: миттєво підставити роль без Google */
   loginAs?: (role: Role) => void;
 };
 
 // ---- DEV SWITCH ----
-// .env: VITE_DEV_AUTH=1 для заглушок; VITE_DEV_AUTH=0 для прод
-const DEV_AUTH = (import.meta.env.VITE_DEV_AUTH ?? "1") === "1";
+const DEV_AUTH = (import.meta.env.VITE_DEV_AUTH ?? "1") === "1"; // ✅ За замовчуванням увімкнено
 
-// ключ для localStorage
+// ключі для localStorage
 const STORAGE_KEY = "cubic.auth.user";
+const TOKEN_KEYS = ["access_token", "cubic_token"]; // ✅ Підтримка обох ключів
 
-// безпечні хелпери для збереження/читання з localStorage
 function loadStoredUser(): User | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -58,6 +57,11 @@ function saveStoredUser(user: User | null) {
   }
 }
 
+// ✅ Перевірка чи є токен
+function hasToken(): boolean {
+  return TOKEN_KEYS.some(key => !!localStorage.getItem(key));
+}
+
 const Ctx = createContext<AuthCtx | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -65,58 +69,109 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // ----------- PROD: /auth/me -----------
+  // ----------- PROD: /api/auth/me -----------
   const refreshMe = useCallback(async () => {
+    // ✅ DEV: якщо є cubic_token, використовуємо дані з localStorage
+    if (DEV_AUTH && localStorage.getItem('cubic_token')) {
+      const stored = loadStoredUser();
+      if (stored) {
+        setUser(stored);
+        console.log('[AUTH][DEV] Loaded user from localStorage:', stored);
+        return;
+      }
+    }
+
+    // Check if token exists before making API call
+    if (!hasToken()) {
+      setUser(null);
+      saveStoredUser(null);
+      return;
+    }
+
     try {
-      const data = await api.get<{ user: User }>("/auth/me");
-      const nextUser = data?.user ?? null;
-      setUser(nextUser);
-      saveStoredUser(nextUser); // синхронізуємо й локально
+      const me = await api.get<any>("/api/auth/me");
+      const mapped: User | null = me
+        ? {
+            id: me.user_id ?? me.id ?? "",
+            name: (me.first_name && me.last_name)
+              ? `${me.first_name} ${me.last_name}`
+              : (me.name ?? me.email ?? ""),
+            email: me.email ?? "",
+            role: me.role ?? null,
+            status: (me.is_active === false) ? "disabled" : "active",
+          }
+        : null;
+      setUser(mapped);
+      console.log('[AUTH][refreshMe] Loaded user:', mapped);
+      saveStoredUser(mapped);
     } catch {
       setUser(null);
       saveStoredUser(null);
+      TOKEN_KEYS.forEach(key => localStorage.removeItem(key));
+      localStorage.removeItem('user');
     }
   }, []);
 
   useEffect(() => {
-    // DEV: відновлюємо користувача з localStorage і завершуємо ініціалізацію
+    // DEV: відновлюємо користувача з localStorage
     if (DEV_AUTH) {
       const stored = loadStoredUser();
-      if (stored) setUser(stored);
+      if (stored) {
+        setUser(stored);
+        console.log('[AUTH][DEV] Restored user on mount:', stored);
+      }
       setInitializing(false);
       return;
     }
 
-    // PROD: одна перевірка сесії при монтуванні
+    // PROD: перевірка сесії
     void (async () => {
       await refreshMe();
       setInitializing(false);
     })();
   }, [refreshMe]);
 
-  // будь-яка зміна user — зберігаємо локально (дублюємо на випадок ручних змін)
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (TOKEN_KEYS.includes(e.key ?? "") && e.newValue) {
+        void refreshMe();
+      } else if (TOKEN_KEYS.includes(e.key ?? "") && !e.newValue) {
+        setUser(null);
+        saveStoredUser(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refreshMe]);
+
+  // Зберігаємо user локально
   useEffect(() => {
     saveStoredUser(user);
+    if (user) {
+      console.log('[AUTH] User set:', { id: user.id, name: user.name, email: user.email, role: user.role });
+    } else {
+      console.log('[AUTH] User cleared');
+    }
   }, [user]);
 
   // ----------- PROD: Google redirect -----------
   const loginWithGoogle = () => {
     if (DEV_AUTH) {
-      // У дев-режимі реальний редірект не потрібен
       console.warn("[DEV_AUTH] loginWithGoogle() викликано — ігноруємо редірект.");
       return;
     }
-    // Full redirect to backend start endpoint
-    window.location.href = API_BASE + "/auth/google/start";
+    void startGoogleOAuth();
   };
 
   // ----------- PROD: Logout -----------
   const logout = useCallback(async () => {
     setLoading(true);
     try {
-      if (!DEV_AUTH) {
-        await api.post("/auth/logout");
-      }
+      TOKEN_KEYS.forEach(key => localStorage.removeItem(key));
+      localStorage.removeItem('user');
+      localStorage.removeItem('cubic_role');
       setUser(null);
       saveStoredUser(null);
     } finally {
@@ -125,18 +180,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // ----------- DEV-ONLY: миттєвий логін за роллю -----------
-  // Видали цей блок у проді або вимкни через VITE_DEV_AUTH=0
-  const loginAs = useCallback((role: Role) => {
+  const loginAs = useCallback(async (role: Role) => {
     if (!DEV_AUTH) return;
-    const fake: User = {
-      id: `dev-${role}`,
-      name: role.toUpperCase(),
-      email: `${role}@dev.local`,
-      role,
-      status: "active",
-    };
-    setUser(fake);
-    saveStoredUser(fake);
+    
+    // Для адміністратора виконуємо автоматичний логін через API
+    if (role === "admin") {
+      try {
+        // Виконуємо автоматичний логін адміністратора
+        const apiBase = API_BASE || 'http://localhost:8000';
+        const response = await fetch(`${apiBase}/api/auth/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
+            password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123'
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // API повертає accessToken (camelCase) або access_token (snake_case)
+          const token = data.accessToken || data.access_token;
+          
+          if (!token) {
+            throw new Error('No access token in response');
+          }
+          
+          // Зберігаємо токен
+          localStorage.setItem('access_token', token);
+          localStorage.setItem('cubic_token', token);
+          
+          // Створюємо користувача адміністратора
+          const userData = data.user || {};
+          const adminUser: User = {
+            id: userData.user_id || userData.id || 'admin-1',
+            name: userData.name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Admin',
+            email: userData.email || 'admin@example.com',
+            role: 'admin',
+            status: "active",
+          };
+          
+          // Зберігаємо дані користувача
+          localStorage.setItem('user', JSON.stringify(adminUser));
+          localStorage.setItem('cubic_role', 'admin');
+          
+          setUser(adminUser);
+          saveStoredUser(adminUser);
+          
+          // Оновлюємо стан після збереження токену
+          await refreshMe();
+          
+          console.log('[AUTH][DEV] Admin auto-login successful:', { token: token.substring(0, 20) + '...', user: adminUser });
+        } else {
+          // Якщо API не працює, показуємо помилку
+          const errorText = await response.text();
+          console.warn('Admin login failed:', response.status, errorText);
+          
+          // Не використовуємо фейкові дані, бо вони не працюватимуть з реальним API
+          throw new Error(`Admin login failed: ${response.status} ${errorText}`);
+        }
+      } catch (error) {
+        // Якщо помилка, показуємо повідомлення
+        console.error('Admin login error:', error);
+        // Не використовуємо фейкові дані, бо вони не працюватимуть з реальним API
+        alert(`Помилка автоматичного логіну адміністратора: ${error instanceof Error ? error.message : 'Невідома помилка'}\n\nПеревірте:\n1. Чи налаштовані ADMIN_USERNAME та ADMIN_PASSWORD на бекенді\n2. Чи працює бекенд\n3. Спробуйте увійти через /admin/login`);
+        throw error;
+      }
+    } else {
+      // Для студентів та викладачів використовуємо фейкові дані
+      const fake: User = {
+        id: `dev-${role}`,
+        name: role.toUpperCase(),
+        email: `${role}@dev.local`,
+        role,
+        status: "active",
+      };
+      setUser(fake);
+      saveStoredUser(fake);
+    }
   }, []);
 
   const value: AuthCtx = useMemo(
@@ -147,7 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loginWithGoogle,
       refreshMe,
       logout,
-      ...(DEV_AUTH ? { loginAs } : {}), // у проді поля loginAs не буде
+      ...(DEV_AUTH ? { loginAs } : {}),
     }),
     [user, initializing, loading, loginWithGoogle, refreshMe, logout, loginAs]
   );
