@@ -93,12 +93,14 @@ const AdminQuickPanel: React.FC<{
 
       console.log("🚀 Генерація розкладу...", payload);
 
+      // [FLOW] Backend POST /api/schedules/generate запуск рішення і повертає message + assignments.
       const response = await generateScheduleApi(payload);
 
       console.log("✅ Розклад згенеровано:", response);
 
       const scheduleArray = response.schedule || [];
 
+      // [FLOW] Зберігаємо останню відповідь генератора у localStorage, щоб FacultyScheduleTable могла її підхопити.
       localStorage.setItem(
         "last_generated_schedule",
         JSON.stringify({
