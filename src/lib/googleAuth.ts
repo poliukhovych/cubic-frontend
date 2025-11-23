@@ -255,13 +255,13 @@ export const startGoogleOAuth = async () => {
   // Alternative: Authorization Code Flow (requires GOOGLE_CLIENT_SECRET on backend)
   await loadGoogleAPI();
 
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  const redirectUri = (import.meta.env.VITE_GOOGLE_REDIRECT_URI as string | undefined)
+  const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
+  const redirectUri = config.GOOGLE_REDIRECT_URI
     || `${window.location.origin}/auth/callback`;
 
-  if (!clientId) throw new Error("VITE_GOOGLE_CLIENT_ID is not set");
+  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 
-  const scopes = (import.meta.env.VITE_GOOGLE_SCOPES as string | undefined) || [
+  const scopes = [
     "openid",
     "profile",
     "email",

@@ -5,6 +5,7 @@ import { useAuth } from '@/types/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { config } from '@/config/runtime';
 
 const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -41,7 +42,7 @@ const AuthCallback: React.FC = () => {
         }
 
         // Відправляємо код авторизації на бекенд
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/google/callback`, {
+        const response = await fetch(`${config.API_BASE_URL}/auth/google/callback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ import { useAuth } from '@/types/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { config } from '@/config/runtime';
 
 const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -50,20 +51,10 @@ const OAuthCallback: React.FC = () => {
         const isRegister = location.pathname.includes('/register/');
         const isLogin = location.pathname.includes('/login');
 
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const API_BASE_URL = config.API_BASE_URL || 'http://localhost:8000';
 
-        // Вибираємо ТІ САМІ redirect_uri, що в Google Console (URIs 2–4)
-        let redirectUriEnv: string | undefined;
-        if (location.pathname.includes('/auth/callback/login')) {
-          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_LOGIN;
-        } else if (location.pathname.includes('/auth/callback/register/student')) {
-          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_REGISTER_STUDENT;
-        } else if (location.pathname.includes('/auth/callback/register/teacher')) {
-          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_REGISTER_TEACHER;
-        }
-
-        const redirectUri =
-          redirectUriEnv ?? `${window.location.origin}${location.pathname}`;
+        // Використовуємо той самий redirect_uri
+        const redirectUri = config.GOOGLE_REDIRECT_URI ?? `${window.location.origin}${location.pathname}`;
 
         let endpoint = '';
         let requestBody: any = {
