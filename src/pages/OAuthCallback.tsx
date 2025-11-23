@@ -1,6 +1,7 @@
 // src/pages/OAuthCallback.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useAuth } from '@/types/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -9,8 +10,10 @@ const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshMe, user } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
+  const [authData, setAuthData] = useState<any>(null);
   // Guard against double effect in React Strict Mode (DEV)
   const executedRef = useRef(false);
 
@@ -154,41 +157,63 @@ const OAuthCallback: React.FC = () => {
             },
           });
         } catch {}
-
+        
         // Save JWT token and user info
-        localStorage.setItem('access_token', data.access_token);
+        // Backend uses 'accessToken' (camelCase) in JSON response
+        const token = data.accessToken || data.access_token;
+        if (!token) {
+          throw new Error('No access token in response');
+        }
+        
+        localStorage.setItem('access_token', token);
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        // Dispatch storage event to notify AuthContext (storage event only fires cross-tab by default)
-        window.dispatchEvent(
-          new StorageEvent('storage', {
-            key: 'access_token',
-            newValue: data.access_token,
-            oldValue: null,
-            storageArea: localStorage,
-            url: window.location.href,
-          }),
-        );
+        // Verify token is saved
+        const savedToken = localStorage.getItem('access_token');
+        console.log('[AUTH][OAuthCallback] Token saved:', {
+          saved: !!savedToken,
+          tokenLength: savedToken?.length,
+          tokenPreview: savedToken ? `${savedToken.substring(0, 20)}...` : null,
+          userEmail: data.user?.email || data.user?.Email,
+          userRole: data.user?.role || data.user?.Role,
+          rawData: { accessToken: data.accessToken, access_token: data.access_token }
+        });
 
         // Clear OAuth session data
         sessionStorage.removeItem('oauth_state');
         sessionStorage.removeItem('oauth_role');
 
-        setStatus('success');
+        // Store auth data for redirect after AuthContext updates
+        setAuthData(data);
 
-        // Redirect to appropriate dashboard based on role
-        setTimeout(() => {
-          const userRole = data.user.role;
-          if (userRole === 'student') {
-            navigate('/student/dashboard', { replace: true });
-          } else if (userRole === 'teacher') {
-            navigate('/teacher/dashboard', { replace: true });
-          } else if (userRole === 'admin') {
-            navigate('/admin/dashboard', { replace: true });
-          } else {
-            navigate('/', { replace: true });
+        // Small delay to ensure localStorage is written (though it's synchronous)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Update AuthContext before redirecting
+        try {
+          // Double-check token is still there
+          const tokenBeforeRefresh = localStorage.getItem('access_token');
+          if (!tokenBeforeRefresh) {
+            throw new Error('Token was not saved properly');
           }
-        }, 1500);
+
+          console.log('[AUTH][OAuthCallback] Calling refreshMe() with token:', {
+            tokenExists: !!tokenBeforeRefresh,
+            tokenLength: tokenBeforeRefresh.length
+          });
+
+          await refreshMe();
+          console.log('[AUTH][OAuthCallback] AuthContext updated after login');
+          setStatus('success');
+        } catch (err) {
+          console.error('[AUTH][OAuthCallback] Failed to refresh auth context:', err);
+          console.error('[AUTH][OAuthCallback] Error details:', {
+            message: err instanceof Error ? err.message : String(err),
+            tokenInStorage: !!localStorage.getItem('access_token'),
+          });
+          // Continue anyway, token is saved in localStorage
+          setStatus('success');
+        }
       } catch (err) {
         console.error('OAuth callback error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -204,7 +229,48 @@ const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, location]);
+  }, [searchParams, navigate, location, refreshMe]);
+
+  // Redirect after user is loaded in AuthContext
+  useEffect(() => {
+    if (status === 'success' && authData) {
+      // If user is already loaded, redirect immediately
+      if (user) {
+        const timeoutId = setTimeout(() => {
+          const userRole = user.role || authData.user.role;
+          if (userRole === 'student') {
+            navigate('/student/dashboard', { replace: true });
+          } else if (userRole === 'teacher') {
+            navigate('/teacher/dashboard', { replace: true });
+          } else if (userRole === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+      } else {
+        // Fallback: if user is not loaded after 2 seconds, redirect anyway
+        // (token is saved in localStorage, so user can be loaded on next page)
+        const fallbackTimeout = setTimeout(() => {
+          console.warn('[AUTH][OAuthCallback] User not loaded in AuthContext, redirecting anyway');
+          const userRole = authData.user.role;
+          if (userRole === 'student') {
+            navigate('/student/dashboard', { replace: true });
+          } else if (userRole === 'teacher') {
+            navigate('/teacher/dashboard', { replace: true });
+          } else if (userRole === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }, 2000);
+
+        return () => clearTimeout(fallbackTimeout);
+      }
+    }
+  }, [status, user, authData, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

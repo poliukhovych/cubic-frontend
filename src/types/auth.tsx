@@ -89,6 +89,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('cubic_token');
+      console.log('[AUTH][refreshMe] Attempting to fetch /api/auth/me', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : null,
+      });
+
       const me = await api.get<any>("/api/auth/me");
       const mapped: User | null = me
         ? {
@@ -104,7 +111,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(mapped);
       console.log('[AUTH][refreshMe] Loaded user:', mapped);
       saveStoredUser(mapped);
-    } catch {
+    } catch (err) {
+      console.error('[AUTH][refreshMe] Failed to fetch /api/auth/me:', err);
+      console.error('[AUTH][refreshMe] Error details:', {
+        message: err instanceof Error ? err.message : String(err),
+        status: (err as any)?.status,
+        statusText: (err as any)?.statusText,
+        tokenInStorage: !!localStorage.getItem('access_token'),
+      });
       setUser(null);
       saveStoredUser(null);
       TOKEN_KEYS.forEach(key => localStorage.removeItem(key));
