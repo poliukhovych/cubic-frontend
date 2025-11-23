@@ -1,7 +1,9 @@
 // src/lib/api/admin.ts
 import { getAuthHeader } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { config } from '@/config/runtime';
+
+const API_BASE_URL = config.API_BASE_URL || 'http://localhost:8000';
 
 // ============ ІСНУЮЧІ ТИПИ (БЕЗ ЗМІН) ============
 export type AdminStats = {

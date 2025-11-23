@@ -31,8 +31,10 @@ type AuthCtx = {
   loginAs?: (role: Role) => void;
 };
 
+import { config } from "@/config/runtime";
+
 // ---- DEV SWITCH ----
-const DEV_AUTH = (import.meta.env.VITE_DEV_AUTH ?? "1") === "1"; // ✅ За замовчуванням увімкнено
+const DEV_AUTH = (config.DEV_AUTH ?? "1") === "1"; // ✅ За замовчуванням увімкнено
 
 // ключі для localStorage
 const STORAGE_KEY = "cubic.auth.user";
@@ -206,8 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
-            password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123'
+            username: config.ADMIN_USERNAME || 'admin',
+            password: config.ADMIN_PASSWORD || 'admin123'
           }),
         });
 

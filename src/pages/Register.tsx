@@ -2,11 +2,17 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, GraduationCap } from 'lucide-react';
+import { config } from '@/config/runtime';
 
 const Register: React.FC = () => {
   const handleRegister = (role: 'student' | 'teacher') => {
     // Start Google OAuth immediately with appropriate redirect per role
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientId = config.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error('GOOGLE_CLIENT_ID is not configured');
+      return;
+    }
+    
     const redirectUri = `${window.location.origin}/auth/callback/register/${role}`;
 
     const scopes = [

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { startGoogleOAuth } from '@/lib/googleAuth';
 import { GraduationCap, CheckCircle } from 'lucide-react';
+import { config } from '@/config/runtime';
 
 const RegisterTeacher: React.FC = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -12,11 +13,11 @@ const RegisterTeacher: React.FC = () => {
   const handleRegister = async () => {
     setIsRedirecting(true);
     try {
-      const useCodeFlow = (import.meta.env.VITE_GOOGLE_USE_CODE_FLOW ?? '0') === '1';
+      const useCodeFlow = (config.GOOGLE_USE_CODE_FLOW ?? '0') === '1';
       sessionStorage.setItem('oauth_role', 'teacher');
       if (useCodeFlow) {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-        if (!clientId) throw new Error('VITE_GOOGLE_CLIENT_ID is not set');
+        const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
+        if (!clientId) throw new Error('GOOGLE_CLIENT_ID is not set');
         const redirectUri = `${window.location.origin}/auth/callback/register/teacher`;
         const scopes = [
           'openid',
