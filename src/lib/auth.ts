@@ -56,7 +56,13 @@ export async function authenticateWithGoogle(
   const data: AuthResponse = await response.json();
   
   // Save token to localStorage
-  localStorage.setItem('access_token', data.access_token);
+  // Backend uses 'accessToken' (camelCase) in JSON response
+  const token = (data as any).accessToken || (data as any).access_token;
+  if (!token) {
+    throw new Error('No access token in response');
+  }
+  
+  localStorage.setItem('access_token', token);
   localStorage.setItem('user', JSON.stringify(data.user));
   
   return data;
@@ -89,7 +95,13 @@ export async function selectRole(role: UserRole): Promise<AuthResponse> {
   const data: AuthResponse = await response.json();
   
   // Update token and user in localStorage
-  localStorage.setItem('access_token', data.access_token);
+  // Backend uses 'accessToken' (camelCase) in JSON response
+  const newToken = (data as any).accessToken || (data as any).access_token;
+  if (!newToken) {
+    throw new Error('No access token in response');
+  }
+  
+  localStorage.setItem('access_token', newToken);
   localStorage.setItem('user', JSON.stringify(data.user));
   
   return data;
@@ -194,7 +206,14 @@ export async function adminLogin(username: string, password: string): Promise<Au
   }
 
   const data: AuthResponse = await response.json();
-  localStorage.setItem('access_token', data.access_token);
+  
+  // Backend uses 'accessToken' (camelCase) in JSON response
+  const token = (data as any).accessToken || (data as any).access_token;
+  if (!token) {
+    throw new Error('No access token in response');
+  }
+  
+  localStorage.setItem('access_token', token);
   localStorage.setItem('user', JSON.stringify(data.user));
   return data;
 }

@@ -1,6 +1,5 @@
 // src/pages/admin/AdminStudents.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { fetchAdminGroups, fetchAdminStudents } from "@/lib/fakeApi/admin";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Group, Student } from "@/types/students";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Plus, Edit2, Trash2, GraduationCap, BookOpen } from "lucide-react";
+import {
+  fetchAdminStudentsPaged,
+  updateStudent as updateStudentApi,
+  deleteStudent as deleteStudentApi,
+  type AdminStudent,
+} from "@/lib/api/admin";
+import {
+  fetchGroupsApi,
+  createGroupApi,
+  updateGroupApi,
+  deleteGroupApi,
+} from "@/lib/api/groups-api";
 
 const AdminStudents: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -25,23 +36,51 @@ const AdminStudents: React.FC = () => {
   const [studentForm, setStudentForm] = useState({ fullName: "", groupId: "", status: "active" as "pending" | "active" | "inactive" });
 
   // Load data
-  useEffect(() => {
-    loadData();
+  const mapAdminStudentToStudent = useCallback((backend: AdminStudent): Student => {
+    // Backend uses camelCase: lastName, firstName, patronymic
+    const parts = [
+      backend.lastName || backend.last_name,
+      backend.firstName || backend.first_name,
+      backend.patronymic
+    ].filter(Boolean);
+    
+    const fullName = parts.join(" ").trim();
+
+    return {
+      id: backend.studentId || backend.student_id,
+      name: fullName || backend.email || backend.student_id,
+      email: backend.email ?? "",
+      groupId: backend.groupId ?? "",
+      status: backend.status ?? (backend.confirmed ? "active" : "pending"),
+    };
   }, []);
 
-  const loadData = async () => {
+  const loadStudents = useCallback(async () => {
     try {
-      const [studentsData, groupsData] = await Promise.all([
-        fetchAdminStudents(),
-        fetchAdminGroups()
-      ]);
+      const { students: backendStudents } = await fetchAdminStudentsPaged(0, 200);
+      console.log('🔍 Backend students sample:', backendStudents.slice(0, 2));
+      setStudents(backendStudents.map(mapAdminStudentToStudent));
+    } catch (error) {
+      console.error("Failed to load students:", error);
+    }
+  }, [mapAdminStudentToStudent]);
 
-      setStudents(studentsData);
+  const loadGroups = useCallback(async () => {
+    try {
+      const groupsData = await fetchGroupsApi();
       setGroups(groupsData);
     } catch (error) {
-      console.error("Failed to load data:", error);
+      console.error("Failed to load groups:", error);
     }
-  };
+  }, []);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([loadStudents(), loadGroups()]);
+  }, [loadStudents, loadGroups]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const groupNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -65,19 +104,21 @@ const AdminStudents: React.FC = () => {
       alert("Введіть назву групи");
       return;
     }
-    
-    console.log('[FAKE] Creating group:', groupForm);
-    const newGroup: Group = {
-      id: `g${Date.now()}`,
-      name: groupForm.name,
-      type: groupForm.type,
-      course: groupForm.course,
-      size: 0
-    };
-    
-    setGroups([...groups, newGroup]);
-    setGroupDialogOpen(false);
-    setGroupForm({ name: "", type: "bachelor", course: 1 });
+    try {
+      await createGroupApi({
+        name: groupForm.name.trim(),
+        type: groupForm.type,
+        course: groupForm.course,
+        size: 30, // Default group size
+      });
+      await loadGroups();
+      setGroupDialogOpen(false);
+      setGroupForm({ name: "", type: "bachelor", course: 1 });
+    } catch (error: any) {
+      console.error("Failed to create group:", error);
+      const errorMessage = error?.message || error?.detail || JSON.stringify(error);
+      alert(`Не вдалося створити групу: ${errorMessage}`);
+    }
   };
 
   const handleUpdateGroup = async () => {
@@ -86,24 +127,33 @@ const AdminStudents: React.FC = () => {
       alert("Введіть назву групи");
       return;
     }
-    
-    console.log('[FAKE] Updating group:', editingGroup.id, groupForm);
-    setGroups(groups.map(g => 
-      g.id === editingGroup.id 
-        ? { ...g, name: groupForm.name, type: groupForm.type, course: groupForm.course }
-        : g
-    ));
-    
-    setGroupDialogOpen(false);
-    setEditingGroup(null);
-    setGroupForm({ name: "", type: "bachelor", course: 1 });
+    try {
+      await updateGroupApi(editingGroup.id, {
+        name: groupForm.name.trim(),
+        type: groupForm.type,
+        course: groupForm.course,
+      });
+      await loadGroups();
+      setGroupDialogOpen(false);
+      setEditingGroup(null);
+      setGroupForm({ name: "", type: "bachelor", course: 1 });
+    } catch (error: any) {
+      console.error("Failed to update group:", error);
+      const errorMessage = error?.message || error?.detail || JSON.stringify(error);
+      alert(`Не вдалося оновити групу: ${errorMessage}`);
+    }
   };
 
   const handleDeleteGroup = async (id: string) => {
     if (!confirm("Видалити цю групу?")) return;
-    
-    console.log('[FAKE] Deleting group:', id);
-    setGroups(groups.filter(g => g.id !== id));
+    try {
+      await deleteGroupApi(id);
+      await loadGroups();
+    } catch (error: any) {
+      console.error("Failed to delete group:", error);
+      const errorMessage = error?.message || error?.detail || JSON.stringify(error);
+      alert(`Не вдалося видалити групу: ${errorMessage}`);
+    }
   };
 
   // Student handlers
@@ -113,24 +163,39 @@ const AdminStudents: React.FC = () => {
       alert("Введіть ПІБ студента");
       return;
     }
-    
-    console.log('[FAKE] Updating student:', editingStudent.id, studentForm);
-    setStudents(students.map(s =>
-      s.id === editingStudent.id
-        ? { ...s, name: studentForm.fullName, groupId: studentForm.groupId, status: studentForm.status }
-        : s
-    ));
-    
-    setStudentDialogOpen(false);
-    setEditingStudent(null);
-    setStudentForm({ fullName: "", groupId: "", status: "active" });
+    try {
+      const updated = await updateStudentApi(editingStudent.id, {
+        fullName: studentForm.fullName.trim(),
+        groupId: studentForm.groupId || undefined,
+        status: studentForm.status,
+      });
+
+      const mapped = mapAdminStudentToStudent(updated);
+      // Preserve email from original student since backend doesn't return it
+      mapped.email = editingStudent.email;
+      
+      setStudents((prev) =>
+        prev.map((s) => (s.id === mapped.id ? mapped : s))
+      );
+
+      setStudentDialogOpen(false);
+      setEditingStudent(null);
+      setStudentForm({ fullName: "", groupId: "", status: "active" });
+    } catch (error: any) {
+      console.error("Failed to update student:", error);
+      alert(error?.detail || "Не вдалося оновити студента");
+    }
   };
 
   const handleDeleteStudent = async (id: string) => {
     if (!confirm("Видалити цього студента?")) return;
-    
-    console.log('[FAKE] Deleting student:', id);
-    setStudents(students.filter(s => s.id !== id));
+    try {
+      await deleteStudentApi(id);
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+    } catch (error: any) {
+      console.error("Failed to delete student:", error);
+      alert(error?.detail || "Не вдалося видалити студента");
+    }
   };
 
   const openEditGroupDialog = (group: Group) => {
@@ -432,7 +497,12 @@ const AdminStudents: React.FC = () => {
                 <select
                   className="input w-full"
                   value={studentForm.status}
-                  onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value as any })}
+                  onChange={(e) =>
+                    setStudentForm({
+                      ...studentForm,
+                      status: e.target.value as Student["status"],
+                    })
+                  }
                 >
                   <option value="active">Активний</option>
                   <option value="pending">Очікує</option>

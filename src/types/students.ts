@@ -28,6 +28,7 @@ export type GroupCreateRequest = {
   name: string;
   type: 'bachelor' | 'master';
   course: number;
+  size: number; // Required by backend
 };
 
 export type GroupUpdateRequest = {

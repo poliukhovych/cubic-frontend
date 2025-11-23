@@ -9,7 +9,7 @@ import {
   approveRegistration,
   rejectRegistration,
 } from "@/lib/api/admin-registrations";
-import { fetchAdminGroups } from "@/lib/fakeApi/admin";
+import { fetchGroupsApi } from "@/lib/api/groups-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ export default function AdminRegistrations() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "student" | "teacher">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
 
   // Модальні вікна
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -47,8 +47,9 @@ export default function AdminRegistrations() {
       setLoading(true);
       const [regs, grps] = await Promise.all([
         fetchAdminRegistrations(),
-        fetchAdminGroups(),
+        fetchGroupsApi(),
       ]);
+      console.log('✅ Завантажено груп:', grps.length, grps.slice(0, 3));
       setRegistrations(regs);
       setFilteredRegistrations(regs);
       setGroups(grps);
@@ -90,6 +91,7 @@ export default function AdminRegistrations() {
 
   // ==================== EDIT ====================
   function handleOpenEdit(registration: RegistrationRequest) {
+    console.log('🔧 Відкриття діалогу редагування. Доступно груп:', groups.length);
     setEditingRegistration(registration);
     setEditFormData({
       fullName: registration.fullName,

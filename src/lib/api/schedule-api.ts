@@ -43,6 +43,22 @@ export interface AssignmentResponse {
   courseType: string;
 }
 
+export interface GeneratedAssignment {
+  timeslotId: number | string;
+  groupId: string;
+  courseId: string;
+  teacherId: string;
+  roomId?: string | number | null;
+  roomName?: string | null;
+  subgroupNo?: number | null;
+  courseType?: string | null;
+  scheduleId?: string;
+  assignmentId?: string;
+  teacherName?: string | null;
+  groupName?: string | null;
+  courseName?: string | null;
+}
+
 export interface ScheduleResponse {
   schedule_id: string;
   label: string;
@@ -52,17 +68,7 @@ export interface ScheduleResponse {
 
 export interface GenerateScheduleResponse {
   message: string;
-  schedule: Array<{
-    timeslotId: number;
-    groupId: string;
-    subgroupNo: number;
-    courseId: string;
-    teacherId: string;
-    roomId: string;
-    courseType: string;
-    scheduleId: string;
-    assignmentId: string;
-  }>;
+  schedule: GeneratedAssignment[];
 }
 
 // ===== API функції =====
@@ -168,17 +174,7 @@ export async function fetchTimeslotsMapApi(): Promise<TimeslotInfo[]> {
 export interface ScheduleWithDetailsResponse {
   message: string;
   schedule: ScheduleResponse;
-  assignments: Array<{
-    timeslotId: number;
-    groupId: string;
-    subgroupNo: number;
-    courseId: string;
-    teacherId: string;
-    roomId: string;
-    courseType: string;
-    scheduleId: string;
-    assignmentId: string;
-  }>;
+  assignments: GeneratedAssignment[];
 }
 
 export async function fetchActiveScheduleApi(): Promise<ScheduleWithDetailsResponse> {

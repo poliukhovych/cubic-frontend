@@ -15,16 +15,39 @@ async function request<T>(
   // Get JWT token from localStorage (support both access_token and cubic_token for dev mode)
   const token = localStorage.getItem('access_token') || localStorage.getItem('cubic_token');
   
-  const res = await fetch(API_BASE + path, {
+  const url = API_BASE + path;
+  const requestHeaders: Record<string, string> = {
+    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    ...headers,
+  };
+
+  // Log request details for /api/auth/me endpoint
+  if (path === '/api/auth/me') {
+    console.log('[API] Request to /api/auth/me:', {
+      url,
+      method,
+      hasToken: !!token,
+      tokenLength: token?.length,
+      headers: { ...requestHeaders, Authorization: token ? `Bearer ${token.substring(0, 20)}...` : undefined },
+    });
+  }
+
+  const res = await fetch(url, {
     method,
     credentials: "include",
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-      ...headers,
-    },
+    headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Log response details for /api/auth/me endpoint
+  if (path === '/api/auth/me') {
+    console.log('[API] Response from /api/auth/me:', {
+      status: res.status,
+      statusText: res.statusText,
+      ok: res.ok,
+    });
+  }
 
   if (!res.ok) {
     let err: any = { status: res.status, statusText: res.statusText };

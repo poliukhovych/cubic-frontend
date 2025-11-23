@@ -1,6 +1,7 @@
 // src/pages/OAuthCallback.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useAuth } from '@/types/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -9,8 +10,10 @@ const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshMe, user } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
+  const [authData, setAuthData] = useState<any>(null);
   // Guard against double effect in React Strict Mode (DEV)
   const executedRef = useRef(false);
 
@@ -21,6 +24,7 @@ const OAuthCallback: React.FC = () => {
         return;
       }
       executedRef.current = true;
+
       try {
         const code = searchParams.get('code');
         const state = searchParams.get('state');
@@ -41,13 +45,25 @@ const OAuthCallback: React.FC = () => {
         }
 
         const role = sessionStorage.getItem('oauth_role');
-        
+
         // Determine if this is register or login based on URL path
         const isRegister = location.pathname.includes('/register/');
         const isLogin = location.pathname.includes('/login');
 
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        const redirectUri = `${window.location.origin}${location.pathname}`;
+
+        // Вибираємо ТІ САМІ redirect_uri, що в Google Console (URIs 2–4)
+        let redirectUriEnv: string | undefined;
+        if (location.pathname.includes('/auth/callback/login')) {
+          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_LOGIN;
+        } else if (location.pathname.includes('/auth/callback/register/student')) {
+          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_REGISTER_STUDENT;
+        } else if (location.pathname.includes('/auth/callback/register/teacher')) {
+          redirectUriEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI_REGISTER_TEACHER;
+        }
+
+        const redirectUri =
+          redirectUriEnv ?? `${window.location.origin}${location.pathname}`;
 
         let endpoint = '';
         let requestBody: any = {
@@ -76,7 +92,7 @@ const OAuthCallback: React.FC = () => {
           body: JSON.stringify(requestBody),
         });
 
-  if (!response.ok) {
+        if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           try {
             console.warn('[AUTH][OAuthCallback] HTTP error:', {
@@ -86,7 +102,7 @@ const OAuthCallback: React.FC = () => {
               body: errorData,
             });
           } catch {}
-          
+
           // If login failed with 404, redirect to registration
           if (isLogin && response.status === 404) {
             setStatus('error');
@@ -98,7 +114,7 @@ const OAuthCallback: React.FC = () => {
             }, 2000);
             return;
           }
-          
+
           // If registration failed with 409, redirect to login
           if (isRegister && response.status === 409) {
             setStatus('error');
@@ -110,7 +126,7 @@ const OAuthCallback: React.FC = () => {
             }, 2000);
             return;
           }
-          
+
           throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
         }
 
@@ -133,46 +149,71 @@ const OAuthCallback: React.FC = () => {
             path: location.pathname,
             user: {
               id: data?.user?.id ?? data?.user?.user_id,
-              name: data?.user?.name ?? `${data?.user?.first_name ?? ''} ${data?.user?.last_name ?? ''}`.trim(),
+              name:
+                data?.user?.name ??
+                `${data?.user?.first_name ?? ''} ${data?.user?.last_name ?? ''}`.trim(),
               email: data?.user?.email,
               role: data?.user?.role,
             },
           });
         } catch {}
         
-  // Save JWT token and user info
-        localStorage.setItem('access_token', data.access_token);
+        // Save JWT token and user info
+        // Backend uses 'accessToken' (camelCase) in JSON response
+        const token = data.accessToken || data.access_token;
+        if (!token) {
+          throw new Error('No access token in response');
+        }
+        
+        localStorage.setItem('access_token', token);
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        // Dispatch storage event to notify AuthContext (storage event only fires cross-tab by default)
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'access_token',
-          newValue: data.access_token,
-          oldValue: null,
-          storageArea: localStorage,
-          url: window.location.href
-        }));
+        // Verify token is saved
+        const savedToken = localStorage.getItem('access_token');
+        console.log('[AUTH][OAuthCallback] Token saved:', {
+          saved: !!savedToken,
+          tokenLength: savedToken?.length,
+          tokenPreview: savedToken ? `${savedToken.substring(0, 20)}...` : null,
+          userEmail: data.user?.email || data.user?.Email,
+          userRole: data.user?.role || data.user?.Role,
+          rawData: { accessToken: data.accessToken, access_token: data.access_token }
+        });
 
         // Clear OAuth session data
         sessionStorage.removeItem('oauth_state');
         sessionStorage.removeItem('oauth_role');
 
-        setStatus('success');
+        // Store auth data for redirect after AuthContext updates
+        setAuthData(data);
 
-        // Redirect to appropriate dashboard based on role
-        setTimeout(() => {
-          const userRole = data.user.role;
-          if (userRole === 'student') {
-            navigate('/student/dashboard', { replace: true });
-          } else if (userRole === 'teacher') {
-            navigate('/teacher/dashboard', { replace: true });
-          } else if (userRole === 'admin') {
-            navigate('/admin/dashboard', { replace: true });
-          } else {
-            navigate('/', { replace: true });
+        // Small delay to ensure localStorage is written (though it's synchronous)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Update AuthContext before redirecting
+        try {
+          // Double-check token is still there
+          const tokenBeforeRefresh = localStorage.getItem('access_token');
+          if (!tokenBeforeRefresh) {
+            throw new Error('Token was not saved properly');
           }
-        }, 1500);
 
+          console.log('[AUTH][OAuthCallback] Calling refreshMe() with token:', {
+            tokenExists: !!tokenBeforeRefresh,
+            tokenLength: tokenBeforeRefresh.length
+          });
+
+          await refreshMe();
+          console.log('[AUTH][OAuthCallback] AuthContext updated after login');
+          setStatus('success');
+        } catch (err) {
+          console.error('[AUTH][OAuthCallback] Failed to refresh auth context:', err);
+          console.error('[AUTH][OAuthCallback] Error details:', {
+            message: err instanceof Error ? err.message : String(err),
+            tokenInStorage: !!localStorage.getItem('access_token'),
+          });
+          // Continue anyway, token is saved in localStorage
+          setStatus('success');
+        }
       } catch (err) {
         console.error('OAuth callback error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -188,7 +229,48 @@ const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, location]);
+  }, [searchParams, navigate, location, refreshMe]);
+
+  // Redirect after user is loaded in AuthContext
+  useEffect(() => {
+    if (status === 'success' && authData) {
+      // If user is already loaded, redirect immediately
+      if (user) {
+        const timeoutId = setTimeout(() => {
+          const userRole = user.role || authData.user.role;
+          if (userRole === 'student') {
+            navigate('/student/dashboard', { replace: true });
+          } else if (userRole === 'teacher') {
+            navigate('/teacher/dashboard', { replace: true });
+          } else if (userRole === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+      } else {
+        // Fallback: if user is not loaded after 2 seconds, redirect anyway
+        // (token is saved in localStorage, so user can be loaded on next page)
+        const fallbackTimeout = setTimeout(() => {
+          console.warn('[AUTH][OAuthCallback] User not loaded in AuthContext, redirecting anyway');
+          const userRole = authData.user.role;
+          if (userRole === 'student') {
+            navigate('/student/dashboard', { replace: true });
+          } else if (userRole === 'teacher') {
+            navigate('/teacher/dashboard', { replace: true });
+          } else if (userRole === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }, 2000);
+
+        return () => clearTimeout(fallbackTimeout);
+      }
+    }
+  }, [status, user, authData, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -220,9 +302,7 @@ const OAuthCallback: React.FC = () => {
                 <XCircle className="h-12 w-12 mx-auto text-red-500" />
                 <h2 className="text-xl font-semibold text-red-600">Помилка</h2>
                 <Alert variant="destructive">
-                  <AlertDescription>
-                    {error}
-                  </AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
                 <p className="text-muted-foreground text-sm">
                   Перенаправляємо вас на сторінку входу через 5 секунд...
