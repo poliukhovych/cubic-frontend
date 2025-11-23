@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { FacultyLesson, Parity } from "@/types/schedule";
 import type { Teacher } from "@/types/teachers";
+import type { Group } from "@/types/students";
+import type { Course } from "@/types/courses";
 import { useAuth } from "@/types/auth";
 import {
   Pin,
@@ -29,11 +31,13 @@ import {
 import { fetchTeachersApi } from "@/lib/api/teachers-api";
 import { fetchGroupsApi } from "@/lib/api/groups-api";
 import { fetchCoursesApi } from "@/lib/api/courses-api";
-import { getDefaultTimeslotMap } from "@/lib/api/timeslots-api";
+import { fetchRoomsApi } from "@/lib/api/rooms-api";
+import type { Room } from "@/lib/api/rooms-api";
+import { fetchTimeslotsMapApi, getDefaultTimeslotMap } from "@/lib/api/timeslots-api";
+import type { GeneratedAssignment } from "@/lib/api/schedule-api";
 
 import {
   saveFacultySchedule,
-  filterFacultyLessons,
   createScheduleSnapshot,
 } from "@/lib/fakeApi/admin";
 
@@ -117,6 +121,18 @@ const ParityToggle: React.FC<{
   );
 };
 
+const formatParityLabel = (parity: Parity): string => {
+  switch (parity) {
+    case "odd":
+      return "НЕПАРНИЙ";
+    case "even":
+      return "ПАРНИЙ";
+    case "any":
+    default:
+      return "ЩОТИЖНЯ";
+  }
+};
+
 // ——— Додати вгорі файлу (поруч із іншими дрібними компонентами) ———
 const AddSlotButton: React.FC<{
   label: string;
@@ -172,8 +188,19 @@ const CellCard: React.FC<{
   onStartEdit,
   isDraft,
   editable,
-}) => (
-  <div
+}) => {
+  const parityLabel = formatParityLabel(lesson.parity);
+  const teacherValue = lesson.teacher?.trim();
+  const locationValue = lesson.location?.toString().trim();
+  const teacherLine = [
+    teacherValue && teacherValue.length ? teacherValue : "[викладач?]",
+    locationValue && locationValue.length ? locationValue : undefined,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
     className={[
       "glasscard rounded-xl m-1 relative",
       dense ? "p-1.5 text-[12px]" : "p-2 text-sm",
@@ -195,7 +222,7 @@ const CellCard: React.FC<{
       e.dataTransfer.setData("text/plain", lesson.id);
       onDragStart(lesson);
     }}
-  >
+    >
     <div className="flex items-start gap-2">
       <div className="font-medium leading-tight">
         {lesson.subject || (
@@ -240,31 +267,24 @@ const CellCard: React.FC<{
           : "text-xs text-[var(--muted)]"
       }
     >
-      {lesson.teacher && lesson.teacher.trim() ? (
-        lesson.teacher
-      ) : (
-        <span className="text-[var(--muted)]">[викладач?]</span>
-      )}
-      {" · "}
-      {lesson.location ?? "—"}
+      {teacherLine}
     </div>
 
-    {lesson.parity !== "any" && (
       <div
         className={dense ? "text-[9px]" : "text-[10px]"}
         style={{ opacity: 0.75 }}
       >
-        {lesson.parity === "even" ? "ПАРНИЙ" : "НЕПАРНИЙ"}
+        {parityLabel}
       </div>
-    )}
 
     {isDraft && (
       <div className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--warning)]/15 text-[var(--warning)] ring-1 ring-[var(--warning)]/40">
         draft
       </div>
     )}
-  </div>
-);
+    </div>
+  );
+};
 
 /* ---------- порожня зона (для спадку сумісності) ---------- */
 
@@ -374,84 +394,283 @@ const SelectorRow: React.FC<{
   </div>
 );
 
+/**
+ * BackendAssignment відповідає об'єкту, який повертає POST /api/schedules/generate
+ * та який ми кешуємо як `last_generated_schedule.schedule`.
+ * Приклад:
+ * {
+ *   "timeslotId": 26,
+ *   "groupId": "group-uuid",
+ *   "courseId": "course-uuid",
+ *   "teacherId": "teacher-uuid",
+ *   "roomId": "101",
+ *   "courseType": "lec",
+ *   "assignmentId": "assign-uuid",
+ *   "teacherName": "Іван Іванович",
+ *   "groupName": "ІПЗ-31"
+ * }
+ */
+type BackendAssignment = GeneratedAssignment;
+
+type GroupRecord = Partial<Group> & { id: string; name: string };
+
+let metaDebugLogged = false;
+
+const clampCourseForLevel = (
+  level: Level,
+  raw?: number | null
+): 1 | 2 | 3 | 4 => {
+  if (typeof raw !== "number" || Number.isNaN(raw)) {
+    return 1;
+  }
+  const maxCourse = level === "master" ? 2 : 4;
+  const normalized = Math.min(Math.max(Math.round(raw), 1), maxCourse);
+  return normalized as 1 | 2 | 3 | 4;
+};
+
+const guessCourseFromGroupName = (name?: string | null): number | null => {
+  if (!name) return null;
+  const match = name.match(/\d/);
+  return match ? Number(match[0]) : null;
+};
+
+const guessLevelFromGroupName = (name?: string | null): Level | null => {
+  if (!name) return null;
+  const trimmed = name.trim().toLowerCase();
+  if (trimmed.startsWith("м") || trimmed.startsWith("m")) {
+    return "master";
+  }
+  return null;
+};
+
+const resolveLessonMeta = (
+  group?: GroupRecord,
+  fallbackName?: string
+): { level: Level; course: 1 | 2 | 3 | 4 } => {
+  let level: Level = "bachelor";
+  if (group?.type === "master") level = "master";
+  if (group?.type === "bachelor") level = "bachelor";
+
+  if (!group?.type) {
+    const guessedLevel = guessLevelFromGroupName(group?.name ?? fallbackName);
+    if (guessedLevel) {
+      level = guessedLevel;
+    }
+  }
+
+  const guessedCourse =
+    typeof group?.course === "number"
+      ? group.course
+      : guessCourseFromGroupName(group?.name ?? fallbackName);
+
+  return {
+    level,
+    course: clampCourseForLevel(level, guessedCourse),
+  };
+};
+
+const normalizeId = (value?: string | number | null): string | null => {
+  if (value === undefined || value === null) return null;
+  const str = String(value).trim();
+  return str.length ? str : null;
+};
+// [FLOW] 2. Convert BackendAssignment[] → FacultyLesson[] за допомогою каталогів (викладачі/групи/курси/аудиторії/таймслоти).
 async function convertAssignmentsToLessons(
-  assignments: Array<{
-    timeslotId: number;
-    groupId: string;
-    courseId: string;
-    teacherId: string;
-    roomId: string;
-    courseType: string;
-  }>
+  assignments: BackendAssignment[]
 ): Promise<FacultyLesson[]> {
+  if (!assignments?.length) {
+    console.warn("⚠️  No assignments to convert");
+    return [];
+  }
+
   console.log("📥 Converting assignments to lessons...", assignments.length);
 
-  // Завантажити всі необхідні дані
-  const timeslotMap = getDefaultTimeslotMap();
-
-  const [teachersResp, groupsResp, coursesResp] = await Promise.all([
-    fetchTeachersApi(),
-    fetchGroupsApi(),
-    fetchCoursesApi(),
+  const [
+    teachersResp,
+    groupsResp,
+    coursesResp,
+    roomsResp,
+    timeslotsResp,
+  ] = await Promise.all([
+    fetchTeachersApi().catch((err) => {
+      console.error("❌ Failed to load teachers for schedule map:", err);
+      return [] as Teacher[];
+    }),
+    fetchGroupsApi().catch((err) => {
+      console.error("❌ Failed to load groups for schedule map:", err);
+      return [] as Group[];
+    }),
+    fetchCoursesApi().catch((err) => {
+      console.error("❌ Failed to load courses for schedule map:", err);
+      return [] as Course[];
+    }),
+    fetchRoomsApi().catch((err) => {
+      console.error("❌ Failed to load rooms for schedule map:", err);
+      return null as Awaited<ReturnType<typeof fetchRoomsApi>> | null;
+    }),
+    fetchTimeslotsMapApi().catch((err) => {
+      console.error("❌ Failed to load timeslots, falling back to defaults:", err);
+      return null as Awaited<ReturnType<typeof fetchTimeslotsMapApi>> | null;
+    }),
   ]);
 
-  // Побудувати map-и для швидкого пошуку. Частина API вже повертає масиви сущностей,
-  // тому нормалізуємо їх «на місці», не покладаючись на властивості типу .teachers тощо.
-  const teacherMap = new Map<string, any>(
-    ((teachersResp as any)?.teachers || teachersResp || []).map((t: any) => [
-      t.teacher_id || t.id,
+  const timeslotMap =
+    timeslotsResp && timeslotsResp.size > 0
+      ? timeslotsResp
+      : getDefaultTimeslotMap();
+
+  const teacherMap = new Map<string, Teacher>(
+    (teachersResp ?? []).map((t: any) => [
+      t.id ?? t.teacher_id ?? t.teacherId,
       t,
     ])
   );
 
-  const groupMap = new Map<string, any>(
-    ((groupsResp as any)?.groups || groupsResp || []).map((g: any) => [
-      g.group_id || g.id,
-      g,
+  const groupMap = new Map<string, GroupRecord>(
+    (groupsResp ?? []).map((g: any) => [
+      g.id ?? g.group_id ?? g.groupId,
+      g as GroupRecord,
     ])
   );
 
-  const courseMap = new Map<string, any>(
-    ((coursesResp as any)?.courses || coursesResp || []).map((c: any) => [
-      c.course_id || c.id,
+  const courseMap = new Map<string, Course>(
+    (coursesResp ?? []).map((c: any) => [
+      c.id ?? c.course_id ?? c.courseId,
       c,
     ])
   );
+
+  const roomMap = new Map<string, Room>();
+  (roomsResp?.rooms ?? []).forEach((room) => {
+    const keys = [
+      normalizeId(room.room_id),
+      normalizeId(room.id),
+      normalizeId(room.name),
+    ].filter((k): k is string => !!k);
+    keys.forEach((key) => roomMap.set(key, room));
+  });
 
   console.log("📊 Data loaded:", {
     timeslots: timeslotMap.size,
     teachers: teacherMap.size,
     groups: groupMap.size,
     courses: courseMap.size,
+    rooms: roomMap.size,
   });
 
-  // Конвертувати кожен assignment
+  assignments.slice(0, 3).forEach((assignment, idx) => {
+    const ts = timeslotMap.get(Number(assignment.timeslotId));
+    const roomKeySample =
+      normalizeId(assignment.roomId) ?? normalizeId(assignment.roomName);
+    console.log("DEBUG resolve sample", idx, {
+      assignment,
+      teacherFound: teacherMap.has(assignment.teacherId),
+      groupFound: groupMap.has(assignment.groupId),
+      courseFound: courseMap.has(assignment.courseId),
+      roomResolved: roomKeySample ? roomMap.has(roomKeySample) : false,
+      roomKey: roomKeySample,
+      timeslot: ts,
+    });
+  });
+
   const lessons: FacultyLesson[] = assignments.map((assignment, idx) => {
-    const timeslot = timeslotMap.get(assignment.timeslotId);
-    const teacher = teacherMap.get(assignment.teacherId);
-    const group = groupMap.get(assignment.groupId);
-    const course = courseMap.get(assignment.courseId);
+    const timeslotId = Number(assignment.timeslotId);
+    const timeslot = Number.isNaN(timeslotId)
+      ? undefined
+      : timeslotMap.get(timeslotId);
     if (!timeslot) {
       console.warn(
         `⚠️  Timeslot ${assignment.timeslotId} not found for assignment ${idx}`
       );
     }
 
+    const teacher = teacherMap.get(assignment.teacherId);
+    const group = groupMap.get(assignment.groupId);
+    const course = courseMap.get(assignment.courseId);
+    const roomKey =
+      normalizeId(assignment.roomId) ?? normalizeId(assignment.roomName);
+    const room = roomKey ? roomMap.get(roomKey) : undefined;
+
+    if (!metaDebugLogged) {
+      console.log("DEBUG meta resolve", {
+        assignment,
+        hasTeacher: teacherMap.has(assignment.teacherId),
+        hasGroup: groupMap.has(assignment.groupId),
+        hasCourse: courseMap.has(assignment.courseId),
+        roomKey,
+        hasRoom: roomKey ? roomMap.has(roomKey) : false,
+      });
+      metaDebugLogged = true;
+    }
+
+    const { level: lessonLevel, course: lessonCourse } = resolveLessonMeta(
+      group,
+      assignment.groupName ?? assignment.groupId
+    );
+
+    const normalizedPair = Number(timeslot?.pair);
+    const pair =
+      normalizedPair >= 1 && normalizedPair <= 4
+        ? (normalizedPair as 1 | 2 | 3 | 4)
+        : 1;
+    const normalizedWeekday = Number(timeslot?.weekday);
+    const weekday =
+      normalizedWeekday >= 1 && normalizedWeekday <= 6
+        ? (normalizedWeekday as 1 | 2 | 3 | 4 | 5 | 6)
+        : 1;
+    const time = timeslot?.time ?? TIMES[pair];
+
+    const subgroupLabel =
+      typeof assignment.subgroupNo === "number"
+        ? ` (підгр. ${assignment.subgroupNo})`
+        : "";
+    const baseGroupName =
+      assignment.groupName ??
+      group?.name ??
+      assignment.groupId ??
+      "";
+    const groupLabel = (baseGroupName + subgroupLabel).trim() || assignment.groupId;
+
+    const subjectBase =
+      assignment.courseName ??
+      (course as any)?.name ??
+      course?.title ??
+      course?.code ??
+      assignment.courseId;
+
+    const subject =
+      assignment.courseType && subjectBase
+        ? `${subjectBase} (${assignment.courseType})`
+        : subjectBase;
+
+    const teacherLabel =
+      assignment.teacherName ??
+      teacher?.name ??
+      (teacher
+        ? `${(teacher as any).last_name ?? ""} ${(teacher as any).first_name ?? ""}`.trim()
+        : undefined) ??
+      assignment.teacherId;
+
+    const location =
+      assignment.roomName ??
+      room?.name ??
+      (assignment.roomId != null ? String(assignment.roomId) : undefined);
+
     const lesson: FacultyLesson = {
-      id: `${assignment.courseId}_${assignment.groupId}_${idx}`,
-      weekday: timeslot?.weekday || 1,
-      pair: timeslot?.pair || 1,
-      parity: timeslot?.parity || "any",
-      time: timeslot?.time || { start: "08:30", end: "10:05" },
-      course: 1, // TODO: визначити курс з groupId або group.name
-      level: "bachelor", // TODO: визначити рівень з group або course
-      group: group?.name || assignment.groupId,
-      subject: course?.name || assignment.courseId,
-      teacher: teacher?.name || teacher?.full_name
-        || (teacher?.last_name && teacher?.first_name
-          ? `${teacher.last_name} ${teacher.first_name}`
-          : assignment.teacherId),
-      location: assignment.roomId,
+      id:
+        assignment.assignmentId ??
+        `${assignment.courseId}_${assignment.groupId}_${assignment.timeslotId}_${idx}`,
+      weekday,
+      pair,
+      parity: (timeslot?.parity as Parity) ?? "any",
+      time,
+      course: lessonCourse,
+      level: lessonLevel,
+      group: groupLabel,
+      speciality: group?.name,
+      subject,
+      teacher: teacherLabel,
+      location: location ?? undefined,
       pinned: false,
     };
 
@@ -492,6 +711,25 @@ const FacultyScheduleTable: React.FC<{
   const [snapTitle, setSnapTitle] = useState("");
   const [snapComment, setSnapComment] = useState("");
   const [snapBusy, setSnapBusy] = useState(false);
+  const initialLessonsProvidedRef = React.useRef(Boolean(lessons && lessons.length));
+
+  const logSetAllLessons = (
+    origin: string,
+    next:
+      | FacultyLesson[]
+      | ((prev: FacultyLesson[]) => FacultyLesson[])
+  ) => {
+    if (typeof next === "function") {
+      setAllLessons((prev) => {
+        const resolved = (next as (prev: FacultyLesson[]) => FacultyLesson[])(prev);
+        console.log(`setAllLessons called from ${origin}`, resolved);
+        return resolved;
+      });
+    } else {
+      console.log(`setAllLessons called from ${origin}`, next);
+      setAllLessons(next);
+    }
+  };
 
   const sortGroups = (a: string, b: string) =>
     a.localeCompare(b, "uk", { numeric: true, sensitivity: "base" });
@@ -527,53 +765,61 @@ const FacultyScheduleTable: React.FC<{
 
   /* ---------- дані ---------- */
   useEffect(() => {
-    // Якщо lessons передано ззовні (props) - використовуємо їх
-    if (lessons) {
-      setAllLessons(lessons);
+    if (!lessons || lessons.length === 0) return;
+    logSetAllLessons("props.lessons", lessons);
+  }, [lessons]);
+
+  // [FLOW] 1. Якщо пропси не містять lesson-ів, відновлюємо їх з localStorage одразу після маунта.
+  useEffect(() => {
+    if (initialLessonsProvidedRef.current) {
+      console.log("ℹ️ Skipping loadSchedule because lessons prop provided on mount");
       return;
     }
 
-    // Інакше завантажуємо з localStorage (після генерації)
+    let cancelled = false;
+
     const loadSchedule = async () => {
       try {
         console.log("🔄 Loading schedule from last generation...");
-        
+
         const lastScheduleJson = localStorage.getItem("last_generated_schedule");
-        
+
         if (!lastScheduleJson) {
-          console.warn("⚠️  No generated schedule found, table will be empty");
-          setAllLessons([]);
+          console.warn("⚠️  No generated schedule found, keeping current lessons");
           return;
         }
 
         const scheduleData = JSON.parse(lastScheduleJson);
         console.log("📊 Schedule data:", scheduleData);
 
-        if (!scheduleData.schedule || scheduleData.schedule.length === 0) {
-          console.warn("⚠️  Schedule has no assignments");
-          setAllLessons([]);
+        const rawAssignments = Array.isArray(scheduleData?.schedule)
+          ? (scheduleData.schedule as BackendAssignment[])
+          : Array.isArray(scheduleData?.assignments)
+            ? (scheduleData.assignments as BackendAssignment[])
+            : [];
+
+        if (!rawAssignments.length) {
+          console.warn("⚠️  Schedule has no assignments, keeping current lessons");
           return;
         }
 
-        // Конвертувати backend assignments → FacultyLesson[]
-        const convertedLessons = await convertAssignmentsToLessons(
-          scheduleData.schedule
-        );
+        const convertedLessons = await convertAssignmentsToLessons(rawAssignments);
         console.log("📅 Converted lessons:", convertedLessons);
 
-        setAllLessons(convertedLessons);
+        if (!cancelled) {
+          logSetAllLessons("loadSchedule.converted", convertedLessons);
+        }
       } catch (err) {
         console.error("❌ Failed to load schedule:", err);
-        setAllLessons([]);
-        
-        // Опціонально: fallback на fake API
-        // import { SEED_BACHELOR } from "@/lib/fakeApi/facultyScheduleSeed";
-        // setAllLessons(SEED_BACHELOR);
       }
     };
 
     loadSchedule();
-  }, [level, lessons]); // Перезавантажувати при зміні level або lessons
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const loadTeachers = async () => {
@@ -607,11 +853,23 @@ const FacultyScheduleTable: React.FC<{
     }
   }, [snapOpen]);
 
-  const viewLessons = useMemo(
-    () => filterFacultyLessons({ lessons: allLessons, course, parity }),
-    [allLessons, course, parity]
-  );
+  // [FLOW] 3. viewLessons наразі напряму відображає allLessons (без додаткових фільтрів для дебагу).
+  const viewLessons = useMemo(() => allLessons, [allLessons]);
 
+  useEffect(() => {
+    console.log("🔍 viewLessons:", viewLessons);
+  }, [viewLessons]);
+
+  useEffect(() => {
+    console.log(
+      "DEBUG allLessons len =",
+      allLessons.length,
+      "viewLessons len =",
+      viewLessons.length
+    );
+  }, [allLessons, viewLessons]);
+
+  // [FLOW] 4. З allLessons формуємо перелік унікальних груп, щоб побудувати колонки.
   const allGroups = useMemo(() => {
     const set = new Set<string>();
     viewLessons.forEach((l) => {
@@ -631,6 +889,7 @@ const FacultyScheduleTable: React.FC<{
     [allGroups, page, pageSize]
   );
 
+  // [FLOW] 5. Мапимо viewLessons у структуру byCell (weekday/pair/group → odd/even/any), яку використовує рендер.
   const byCell = useMemo(() => {
     const m = new Map<string, { odd?: FacultyLesson; even?: FacultyLesson; any?: FacultyLesson }>();
     viewLessons.forEach((l) => {
@@ -653,6 +912,7 @@ const FacultyScheduleTable: React.FC<{
     return m;
   }, [viewLessons]);
 
+  // [FLOW] 6. getCell читає підготовлену мапу byCell і повертає набори уроків для конкретної комірки.
   const getCell = (
     weekday: 1 | 2 | 3 | 4 | 5 | 6,
     pair: 1 | 2 | 3 | 4,
@@ -680,7 +940,7 @@ const FacultyScheduleTable: React.FC<{
   };
   const commitEdit = () => {
     if (!editable || !editingId) return;
-    setAllLessons((prev) =>
+    logSetAllLessons("commitEdit", (prev) =>
       prev.map((l) =>
         l.id === editingId ? ({ ...l, ...editBuf } as FacultyLesson) : l
       )
@@ -691,14 +951,14 @@ const FacultyScheduleTable: React.FC<{
 
   const togglePin = (id: string) => {
     if (!editable) return;
-    setAllLessons((prev) =>
+    logSetAllLessons("togglePin", (prev) =>
       prev.map((l) => (l.id === id ? { ...l, pinned: !l.pinned } : l))
     );
   };
 
   const deleteLesson = (id: string) => {
     if (!editable) return;
-    setAllLessons((prev) => prev.filter((l) => l.id !== id));
+    logSetAllLessons("deleteLesson", (prev) => prev.filter((l) => l.id !== id));
     setDraftIds((prev) => {
       const n = new Set(prev);
       n.delete(id);
@@ -745,7 +1005,7 @@ const FacultyScheduleTable: React.FC<{
       location: "",
       pinned: false,
     };
-    setAllLessons((prev) => [...prev, l]);
+    logSetAllLessons("createDraftLesson", (prev) => [...prev, l]);
     setDraftIds((prev) => new Set(prev).add(l.id));
     startEdit(l);
   };
@@ -757,7 +1017,7 @@ const FacultyScheduleTable: React.FC<{
     forceParity?: Parity
   ) => {
     if (!editable) return;
-    setAllLessons((prev) => {
+    logSetAllLessons("moveLesson", (prev) => {
       const srcIdx = prev.findIndex((l) => l.id === lessonId);
       if (srcIdx < 0) return prev;
       if (prev[srcIdx].pinned) return prev;
@@ -903,7 +1163,7 @@ const FacultyScheduleTable: React.FC<{
     setSaving(true);
 
     // Видаляємо незаповнені чернетки (обов'язково потрібні subject і teacher)
-    setAllLessons((prev) =>
+    logSetAllLessons("saveAll", (prev) =>
       prev.filter((l) => {
         if (!draftIds.has(l.id)) return true;
         const ok = l.subject?.trim() && l.teacher?.trim();
@@ -1360,11 +1620,11 @@ const FacultyScheduleTable: React.FC<{
                                         } else {
                                           // odd/even -> any: змінюємо any на протилежну парність
                                           const targetParity = draggedLesson.parity === "odd" ? "even" : "odd";
-                                          setAllLessons((prev) =>
-                                            prev.map((l) => {
-                                              if (l.id === draggedId) {
+                                          logSetAllLessons("anyDrop.swap", (prev) =>
+                                            prev.map((x) => {
+                                              if (x.id === draggedId) {
                                                 return {
-                                                  ...l,
+                                                  ...x,
                                                   weekday,
                                                   pair,
                                                   group,
@@ -1372,10 +1632,10 @@ const FacultyScheduleTable: React.FC<{
                                                   parity: draggedLesson.parity,
                                                 };
                                               }
-                                              if (l.id === anyLesson.id) {
-                                                return { ...l, parity: targetParity };
+                                              if (x.id === anyLesson.id) {
+                                                return { ...x, parity: targetParity };
                                               }
-                                              return l;
+                                              return x;
                                             })
                                           );
                                         }
@@ -1410,7 +1670,7 @@ const FacultyScheduleTable: React.FC<{
                                             title="Розщепити на odd/even (odd вгорі)"
                                             onClick={() => {
                                               const a = anyItems[0];
-                                              setAllLessons((prev) =>
+                                              logSetAllLessons("anySplit", (prev) =>
                                                 prev.map((x) =>
                                                   x.id === a.id
                                                     ? { ...x, parity: "even" }

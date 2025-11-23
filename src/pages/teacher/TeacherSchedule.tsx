@@ -1,6 +1,8 @@
 // src/pages/teacher/TeacherSchedule.tsx
 import React, { useEffect, useState } from "react";
-import { fetchTeacherSchedule } from "@/lib/fakeApi/teacher";
+import { getTeacherSchedule, getTeacherByUserId } from "@/lib/api/teachers-api-real";
+import { convertAssignmentsToLessons } from "@/lib/api/schedule-converters";
+import type { Lesson } from "@/types/schedule";
 import { useAuth } from "@/types/auth";
 import { getFirstTeachingMonday, getParity, getWeekIndex, getWeekStartFromIndex, formatWeekRange } from "@/lib/time/academicWeek";
 import { motion } from "framer-motion";
@@ -16,7 +18,9 @@ const TeacherSchedule: React.FC = () => {
   const { user } = useAuth();
   const semesterStart = React.useMemo(() => getFirstTeachingMonday(new Date()), []);
 
-  const [data, setData] = useState<any | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [week, setWeek] = useState<number>(() => getWeekIndex(new Date(), { startMonday: semesterStart }));
 
   const currentWeek = React.useMemo(() => getWeekIndex(new Date(), { startMonday: semesterStart }), [semesterStart]);
@@ -25,20 +29,61 @@ const TeacherSchedule: React.FC = () => {
   const rangeText = React.useMemo(() => formatWeekRange(weekStart), [weekStart]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let alive = true;
-    fetchTeacherSchedule(user.id).then((res) => { if (alive) setData(res); });
+    
+    const loadSchedule = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Отримуємо teacher_id з user_id
+        const teacher = await getTeacherByUserId(user.id);
+        
+        // Отримуємо розклад викладача
+        const assignments = await getTeacherSchedule(teacher.teacherId);
+        
+        // Конвертуємо в формат Lesson
+        const convertedLessons = await convertAssignmentsToLessons(assignments);
+        
+        if (alive) {
+          setLessons(convertedLessons);
+        }
+      } catch (err) {
+        console.error("Failed to load teacher schedule:", err);
+        if (alive) {
+          setError("Не вдалося завантажити розклад");
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSchedule();
     return () => { alive = false; };
   }, [user]);
 
-  useEffect(() => {
-    if (!data || !(data as any).totalWeeks) return;
-    const total = (data as any).totalWeeks as number;
-    setWeek((w) => Math.max(1, Math.min(total, w)));
-  }, [data]);
+  const totalWeeks = 16;
 
-  if (!data) return <Spinner />;
-  const totalWeeks: number = (data as any).totalWeeks ?? 16;
+  if (loading) return <Spinner />;
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          >
+            Спробувати знову
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -68,7 +113,7 @@ const TeacherSchedule: React.FC = () => {
       <Crossfade stateKey={`${week}-${parity}`}>
         <Reveal y={0} blurPx={8} opacityFrom={0} delayMs={120}>
           <WeekCalendar
-            lessons={data.lessons}
+            lessons={lessons}
             parity={parity}
             weekStart={weekStart}
             renderLesson={(lesson, isToday) => (
@@ -76,7 +121,7 @@ const TeacherSchedule: React.FC = () => {
                 lesson={lesson}
                 isToday={isToday}
                 userRole="teacher"
-                subjectId={lesson.id} // For teachers, we use the lesson ID as the subject ID
+                subjectId={lesson.id}
               />
             )}
           />

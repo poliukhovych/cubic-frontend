@@ -1,7 +1,7 @@
 // src/pages/teacher/TeacherStudents.tsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { fetchMyStudents } from "@/lib/fakeApi/teacher";
-import type { Student } from "@/types/students";
+import { getTeacherStudents, getTeacherByUserId } from "@/lib/api/teachers-api-real";
+import type { Student } from "@/lib/api/teachers-api-real";
 import { useAuth } from "@/types/auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,12 @@ function downloadCsv(rows: string[][], filename: string) {
 function groupStudents(students: Student[]): GroupBucket[] {
   const map = new Map<string, GroupBucket>();
   for (const s of students) {
-    const k: GroupKey = { groupId: String(s.groupId), subgroup: s.subgroup ?? undefined };
+    // Визначаємо підгрупу на основі subgroupNo (1 = 'a', 2 = 'b', інше = без підгрупи)
+    const subgroup = s.groupId && s.groupId.includes('-') 
+      ? (s.groupId.split('-')[1] === 'a' ? 'a' : s.groupId.split('-')[1] === 'b' ? 'b' : undefined)
+      : undefined;
+    
+    const k: GroupKey = { groupId: s.groupId || "Без групи", subgroup };
     const kk = keyOf(k);
     if (!map.has(kk)) map.set(kk, { key: k, label: kk, students: [] });
     map.get(kk)!.students.push(s);
@@ -80,7 +85,7 @@ const GroupPanel = React.memo(function GroupPanel({
 }) {
   // студенти відсортовані за ПІБ
   const studentsSorted = React.useMemo(
-    () => bucket.students.slice().sort((a, b) => a.name.localeCompare(b.name, "uk")),
+    () => bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk")),
     [bucket.students]
   );
 
@@ -170,7 +175,7 @@ const GroupPanel = React.memo(function GroupPanel({
               <CardContent className="p-4 space-y-2 bg-card/30 backdrop-blur-sm">
                 {studentsSorted.map((s, j) => (
                   <motion.div
-                    key={s.id}
+                    key={s.studentId}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: j * 0.05, duration: 0.3 }}
@@ -178,12 +183,12 @@ const GroupPanel = React.memo(function GroupPanel({
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="bg-primary/15 text-primary font-medium text-sm border border-primary/20">
-                        {s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        {s.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate text-foreground">{s.name}</div>
-                      <div className="text-sm text-muted-foreground truncate">{s.email}</div>
+                      <div className="font-medium truncate text-foreground">{s.fullName}</div>
+                      <div className="text-sm text-muted-foreground truncate">{s.userId || 'Без email'}</div>
                     </div>
                     <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/30">
                       {j + 1}
@@ -203,12 +208,41 @@ const GroupPanel = React.memo(function GroupPanel({
 const TeacherStudents: React.FC = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let alive = true;
-    fetchMyStudents(user.id).then((res) => { if (alive) setStudents(res); });
+    
+    const loadStudents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Отримуємо teacher_id з user_id
+        const teacher = await getTeacherByUserId(user.id);
+        
+        // Отримуємо список студентів
+        const studentsList = await getTeacherStudents(teacher.teacherId);
+        
+        if (alive) {
+          setStudents(studentsList);
+        }
+      } catch (err) {
+        console.error("Failed to load students:", err);
+        if (alive) {
+          setError("Не вдалося завантажити список студентів");
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadStudents();
     return () => { alive = false; };
   }, [user]);
 
@@ -232,8 +266,8 @@ const TeacherStudents: React.FC = () => {
   const exportTxt = useCallback((bucket: GroupBucket) => {
     const list = bucket.students
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "uk"))
-      .map((s, idx) => `${idx + 1}. ${s.name}${s.email ? ` — ${s.email}` : ""}`)
+      .sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"))
+      .map((s, idx) => `${idx + 1}. ${s.fullName}${s.userId ? ` — ${s.userId}` : ""}`)
       .join("\r\n");
 
     const header = `Список студентів ${bucket.label}\r\n`;
@@ -244,28 +278,27 @@ const TeacherStudents: React.FC = () => {
 
   const exportCsv = useCallback((bucket: GroupBucket) => {
     const rows: string[][] = [
-      ["№", "ПІБ", "Email", "Група", "Підгрупа"],
+      ["№", "ПІБ", "User ID", "Група", "Підгрупа"],
     ];
-    const sorted = bucket.students.slice().sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    const sorted = bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"));
     sorted.forEach((s, i) => {
       rows.push([
         String(i + 1),
-        s.name,
-        s.email ?? "",
+        s.fullName,
+        s.userId ?? "",
         String(s.groupId ?? ""),
-        String(s.subgroup ?? ""),
+        "", // subgroup not available in API response
       ]);
     });
     const name = `students-${slug(bucket.label)}.csv`;
     downloadCsv(rows, name);
   }, []);
 
-  /** Легкий варіант "відкрити Sheets": копіюємо TSV у буфер і відкриваємо нову таблицю */
   const exportSheets = useCallback(async (bucket: GroupBucket) => {
-    const sorted = bucket.students.slice().sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    const sorted = bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"));
     const rows: string[][] = [
-      ["№", "ПІБ", "Email", "Група", "Підгрупа"],
-      ...sorted.map((s, i) => [String(i + 1), s.name, s.email ?? "", String(s.groupId ?? ""), String(s.subgroup ?? "")]),
+      ["№", "ПІБ", "User ID", "Група", "Підгрупа"],
+      ...sorted.map((s, i) => [String(i + 1), s.fullName, s.userId ?? "", String(s.groupId ?? ""), ""]),
     ];
     const toTsv = (r: string[][]) => r.map(row => row.map(v => (v ?? "").replace(/\t/g, " ")).join("\t")).join("\r\n");
     const tsv = toTsv(rows);
@@ -281,6 +314,33 @@ const TeacherStudents: React.FC = () => {
       // юзер одразу натискає Ctrl+V у A1
     }
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Завантаження...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          >
+            Спробувати знову
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,8 @@
 // src/pages/student/StudentSchedule.tsx
 import React, { useEffect, useState } from "react";
-import { fetchStudentSchedule } from "@/lib/fakeApi/student";
-import type { StudentSchedule as T } from "@/types/schedule";
+import { getStudentSchedule } from "@/lib/api/students-api";
+import { convertAssignmentsToLessons } from "@/lib/api/schedule-converters";
+import type { Lesson } from "@/types/schedule";
 import { useAuth } from "@/types/auth";
 import { formatWeekRange, getFirstTeachingMonday, getParity, getWeekIndex, getWeekStartFromIndex } from "@/lib/time/academicWeek";
 import { Calendar } from "lucide-react";
@@ -13,15 +14,19 @@ import Spinner from "@/components/Spinner";
 
 const StudentSchedule: React.FC = () => {
   const { user } = useAuth();
-const semesterStart = React.useMemo(
+  const semesterStart = React.useMemo(
     () => getFirstTeachingMonday(new Date()),
     []
-  );    const [data, setData] = useState<T | null>(null);
+  );
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
- const [week, setWeek] = useState<number>(() =>
+  const [week, setWeek] = useState<number>(() =>
     getWeekIndex(new Date(), { startMonday: semesterStart })
-  );  
-const weekStart = React.useMemo(
+  );
+  
+  const weekStart = React.useMemo(
     () => getWeekStartFromIndex(semesterStart, week),
     [semesterStart, week]
   );
@@ -34,20 +39,64 @@ const weekStart = React.useMemo(
   const currentWeek = React.useMemo(() => getWeekIndex(new Date(), { startMonday: semesterStart }), [semesterStart]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+    
     let alive = true;
-    fetchStudentSchedule(user.id).then((res) => { if (alive) setData(res); });
+    
+    const loadSchedule = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Отримуємо розклад з бекенду
+        const assignments = await getStudentSchedule(user.id);
+        
+        // Конвертуємо в формат Lesson
+        const convertedLessons = await convertAssignmentsToLessons(assignments);
+        
+        if (alive) {
+          setLessons(convertedLessons);
+        }
+      } catch (err) {
+        console.error("Failed to load student schedule:", err);
+        if (alive) {
+          setError("Не вдалося завантажити розклад");
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSchedule();
     return () => { alive = false; };
   }, [user]);
 
-  useEffect(() => {
-    if (!data || !(data as any).totalWeeks) return;
-    const total = (data as any).totalWeeks as number;
-    setWeek((w) => Math.max(1, Math.min(total, w)));
-  }, [data]);
+  const totalWeeks = 16;
 
-  if (!data) return <Spinner />;
-  const totalWeeks: number = (data as any).totalWeeks ?? 16;
+  if (loading) return <Spinner />;
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          >
+            Спробувати знову
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Отримуємо групу з першого заняття (якщо є)
+  const firstLesson = lessons[0];
+  const groupName = firstLesson?.group?.name || "Група";
+  const subgroup = firstLesson?.group?.subgroup;
 
   return (
     <div className="space-y-6">
@@ -61,7 +110,7 @@ const weekStart = React.useMemo(
         <div className="flex items-center gap-3 glass backdrop-blur-sm px-6 py-4 rounded-2xl border border-border/20">
           <Calendar className="w-8 h-8 text-primary" />
           <h1 className="text-3xl font-semibold text-foreground">
-            Мій розклад — {data.group.name}{data.group.subgroup ? `/${data.group.subgroup}` : ""}
+            Мій розклад — {groupName}{subgroup ? `/${subgroup}` : ""}
           </h1>
         </div>
       </motion.div>
@@ -96,7 +145,7 @@ const weekStart = React.useMemo(
           transition={{ duration: 0.3 }}
         >
           <WeekCalendar 
-            lessons={data.lessons} 
+            lessons={lessons} 
             parity={parity} 
             weekStart={weekStart} 
             renderLesson={(lesson, isToday) => (

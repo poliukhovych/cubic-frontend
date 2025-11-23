@@ -22,10 +22,13 @@ export async function fetchAdminStats(): Promise<AdminStats> {
 
 export type AdminStudent = {
   student_id: string;
-  first_name: string;
-  last_name: string;
+  studentId: string; // camelCase from backend
+  firstName: string; // camelCase from backend
+  lastName: string; // camelCase from backend
+  first_name: string; // snake_case for backwards compatibility
+  last_name: string; // snake_case for backwards compatibility
   patronymic?: string | null;
-  confirmed: boolean;
+  confirmed?: boolean;
   email?: string | null;
   groupId?: string;
   status?: 'pending' | 'active' | 'inactive';
@@ -102,17 +105,39 @@ export async function deleteGroup(id: string): Promise<void> {
 
 // ============ НОВІ ФУНКЦІЇ ДЛЯ СТУДЕНТІВ ============
 export async function updateStudent(id: string, data: Partial<{ fullName: string; groupId: string; status: string }>): Promise<AdminStudent> {
-  const res = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+  // Parse fullName into lastName, firstName, patronymic
+  const payload: any = {};
+  
+  if (data.fullName) {
+    const parts = data.fullName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      payload.last_name = parts[0];
+      payload.first_name = parts[1];
+      if (parts.length > 2) {
+        payload.patronymic = parts.slice(2).join(" ");
+      }
+    }
+  }
+  
+  if (data.groupId) {
+    payload.group_id = data.groupId;
+  }
+  
+  if (data.status) {
+    payload.status = data.status;
+  }
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Failed to update student: ${res.status}`);
   return res.json();
 }
 
 export async function deleteStudent(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });

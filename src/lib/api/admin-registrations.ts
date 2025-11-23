@@ -77,21 +77,25 @@ export async function updateRegistration(
   // Конвертуємо frontend формат в backend формат
   const backendPayload: Record<string, unknown> = {};
   
-  if (payload.fullName) {
+  console.log('📤 Оновлення заявки, вхідні дані:', payload);
+  
+  if (payload.fullName !== undefined) {
     // Розбиваємо fullName на first_name, last_name, patronymic
+    // Формат: "Прізвище Ім'я По-батькові" (український порядок)
     const parts = payload.fullName.trim().split(/\s+/).filter(Boolean);
     if (parts.length >= 2) {
-      backendPayload.firstName = parts[0];
-      backendPayload.lastName = parts[parts.length - 1];
+      backendPayload.lastName = parts[0];  // Перше слово - прізвище
+      backendPayload.firstName = parts[1]; // Друге слово - ім'я
       if (parts.length > 2) {
-        backendPayload.patronymic = parts.slice(1, -1).join(" ");
+        backendPayload.patronymic = parts.slice(2).join(" ") || null; // Решта - по-батькові
       } else {
         backendPayload.patronymic = null;
       }
     } else if (parts.length === 1) {
-      // Якщо тільки одне слово, вважаємо його ім'ям
-      backendPayload.firstName = parts[0];
-      backendPayload.lastName = "";
+      // Якщо тільки одне слово, вважаємо його прізвищем
+      backendPayload.lastName = parts[0];
+      backendPayload.firstName = "";
+      backendPayload.patronymic = null;
     }
   }
   
@@ -105,6 +109,8 @@ export async function updateRegistration(
   
   // subjects не підтримується в UpdateRegistrationRequest на бекенді
   // тому не відправляємо його
+  
+  console.log('📤 Відправка на бекенд:', backendPayload);
   
   const dto = await api.put<RegistrationRequestOutDto>(
     `/api/admin/registrations/${id}`,
