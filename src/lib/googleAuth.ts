@@ -197,69 +197,14 @@ export const disableAutoSelect = () => {
 // Ініціюємо OAuth flow вручну (для прямого редиректу)
 export const startGoogleOAuth = async () => {
   /**
-   * Use popup-based OAuth2 flow to avoid FedCM CORS issues
-   * This works reliably without requiring FedCM headers
+   * Use Authorization Code Flow with redirect
+   * This opens in the same window/tab instead of popup
    */
   
-  await loadGoogleAPI();
-  
   const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
-  
-  // Note: role can be set by register/login pages via sessionStorage under 'oauth_role'
-  // If needed in future, read it here and pass to backend. For now it's unused.
-  
-  // Use OAuth2 popup flow instead of One Tap to avoid FedCM
-  if (!window.google?.accounts?.oauth2) {
-    console.error("Google OAuth2 API not loaded");
-    throw new Error("Google OAuth2 API not loaded");
-  }
-  
-  const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: 'openid profile email',
-    callback: async (tokenResponse: any) => {
-      if (tokenResponse.error) {
-        console.error("Google OAuth error:", tokenResponse);
-        alert('Помилка авторизації: ' + tokenResponse.error);
-        return;
-      }
-      
-      // Get ID token using the access token
-      try {
-        const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            'Authorization': `Bearer ${tokenResponse.access_token}`
-          }
-        });
-        
-        const userInfo = await response.json();
-        
-        // Now we need to send this to our backend
-        // Since we don't have id_token from this flow, we'll use the /api/auth/register or /api/auth/login endpoints
-        // But those require authorization code, not access token
-        // So we need a different approach - let's create a temporary id_token-like structure
-        
-        console.log("User info from Google:", userInfo);
-        alert('OAuth popup flow потребує додаткової конфігурації. Використовуйте код flow замість цього.');
-      } catch (error) {
-        console.error("Failed to get user info:", error);
-        alert('Помилка отримання інформації користувача');
-      }
-    },
-  });
-  
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-  
-  /* 
-  // Alternative: Authorization Code Flow (requires GOOGLE_CLIENT_SECRET on backend)
-  await loadGoogleAPI();
 
-  const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
-  const redirectUri = config.GOOGLE_REDIRECT_URI
-    || `${window.location.origin}/auth/callback`;
-
-  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
+  const redirectUri = config.GOOGLE_REDIRECT_URI || `${window.location.origin}/oauth/callback`;
 
   const scopes = [
     "openid",
@@ -274,31 +219,17 @@ export const startGoogleOAuth = async () => {
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem("oauth_state", state);
 
-  if (!window.google?.accounts?.oauth2) {
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: scopes,
-      access_type: "offline",
-      include_granted_scopes: "true",
-      state,
-      prompt: "consent",
-    });
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    return;
-  }
-
-  const codeClient = window.google.accounts.oauth2.initCodeClient({
+  // Direct redirect to Google OAuth (no popup)
+  const params = new URLSearchParams({
     client_id: clientId,
-    scope: scopes,
-    ux_mode: "redirect",
     redirect_uri: redirectUri,
+    response_type: "code",
+    scope: scopes,
+    access_type: "offline",
+    include_granted_scopes: "true",
     state,
-    include_granted_scopes: true,
-    enable_serial_consent: true,
+    prompt: "consent",
   });
-
-  codeClient.requestCode();
-  */
+  
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
