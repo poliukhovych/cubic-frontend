@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { InlineSpinner } from "@/components/Spinner";
 import { startGoogleOAuth } from "@/lib/googleAuth";
+import { config } from "@/config/runtime";
 
 const Login: React.FC = () => {
   const { loginAs, user } = useAuth();
@@ -28,14 +29,14 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
   setIsRedirecting(true);
   try {
-    const useCodeFlow = (import.meta.env.VITE_GOOGLE_USE_CODE_FLOW ?? '0') === '1';
+    const useCodeFlow = (config.GOOGLE_USE_CODE_FLOW ?? '0') === '1';
     if (useCodeFlow) {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-      if (!clientId) throw new Error('VITE_GOOGLE_CLIENT_ID is not set');
+      const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
+      if (!clientId) throw new Error('GOOGLE_CLIENT_ID is not set');
 
-      // БЕРЕМО точний URI з env (URI 4)
+      // БЕРЕМО точний URI з config
       const redirectUri =
-        import.meta.env.VITE_GOOGLE_REDIRECT_URI_LOGIN
+        config.GOOGLE_REDIRECT_URI
         ?? `${window.location.origin}/auth/callback/login`;
 
       const scopes = [
