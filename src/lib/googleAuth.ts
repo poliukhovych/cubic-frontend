@@ -204,7 +204,7 @@ export const startGoogleOAuth = async () => {
   const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 
-  const redirectUri = config.GOOGLE_REDIRECT_URI || `${window.location.origin}/oauth/callback`;
+  const redirectUri = config.GOOGLE_REDIRECT_URI || `${window.location.origin}/auth/callback`;
 
   const scopes = [
     "openid",

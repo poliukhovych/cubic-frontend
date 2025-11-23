@@ -65,11 +65,11 @@ const OAuthCallback: React.FC = () => {
 
         if (isRegister && role) {
           // Registration
-          endpoint = `${API_BASE_URL}/api/auth/register/${role}`;
+          endpoint = `${API_BASE_URL}/auth/register/${role}`;
           requestBody.role = role;
         } else if (isLogin) {
           // Login
-          endpoint = `${API_BASE_URL}/api/auth/login`;
+          endpoint = `${API_BASE_URL}/auth/login`;
         } else {
           throw new Error('Unknown callback type');
         }
