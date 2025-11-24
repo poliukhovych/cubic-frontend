@@ -37,7 +37,7 @@ export async function authenticateWithGoogle(
   idToken: string,
   role?: UserRole
 ): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ export async function selectRole(role: UserRole): Promise<AuthResponse> {
     throw new Error('No authentication token found');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/auth/select-role`, {
+  const response = await fetch(`${API_BASE_URL}/auth/select-role`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export async function getCurrentUser(): Promise<User> {
     throw new Error('No authentication token found');
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -193,7 +193,7 @@ export function getAuthHeader(): HeadersInit {
  * Admin login with username/password
  */
 export async function adminLogin(username: string, password: string): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/admin/login`, {
+  const response = await fetch(`${API_BASE_URL}/auth/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),

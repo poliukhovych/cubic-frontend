@@ -202,10 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Для адміністратора виконуємо автоматичний логін через API
     if (role === "admin") {
       try {
-        // Виконуємо автоматичний логін адміністратора
-        // config.API_BASE_URL вже містить /api, тому не додаємо його ще раз
-        const apiBase = config.API_BASE_URL || '';
-        const endpoint = apiBase.endsWith('/api') ? `${apiBase}/auth/admin/login` : `${apiBase}/api/auth/admin/login`;
+        // Nginx проксує /api/* на бекенд, тому просто використовуємо /api/...
+        const endpoint = `${config.API_BASE_URL}/auth/admin/login`;
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
