@@ -8,7 +8,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleGuard from "@/components/RoleGuard";
 import RequireAnon from "@/components/RequireAnon";
 import AuthProcessing from "@/pages/AuthProcessing";
-import AuthCallback from "@/pages/AuthCallback";
 import CompleteProfile from "@/pages/CompleteProfile";
 import RoleSelectionPage from "@/pages/RoleSelectionPage";
 import PendingApproval from "@/pages/PendingApproval";
@@ -49,11 +48,8 @@ export const router = createBrowserRouter(
         { path: "register", element: <RequireAnon><Register /></RequireAnon> },
         { path: "register/student", element: <RequireAnon><RegisterStudent /></RequireAnon> },
         { path: "register/teacher", element: <RequireAnon><RegisterTeacher /></RequireAnon> },
-        { path: "auth/callback/register/student", element: <OAuthCallback /> },
-        { path: "auth/callback/register/teacher", element: <OAuthCallback /> },
-        { path: "auth/callback/login", element: <OAuthCallback /> },
+        { path: "auth/callback", element: <OAuthCallback /> },
         { path: "auth/processing", element: <AuthProcessing /> },
-        { path: "auth/callback", element: <AuthCallback /> },
         { path: "complete-profile", element: <CompleteProfile /> },
         { path: "role-selection", element: <RoleSelectionPage /> },
         { path: "pending-approval", element: <PendingApproval /> },

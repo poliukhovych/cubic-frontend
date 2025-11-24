@@ -13,7 +13,7 @@ const Register: React.FC = () => {
       return;
     }
     
-    const redirectUri = `${window.location.origin}/auth/callback/register/${role}`;
+    const redirectUri = config.GOOGLE_REDIRECT_URI ?? `${window.location.origin}/auth/callback`;
 
     const scopes = [
       'openid',

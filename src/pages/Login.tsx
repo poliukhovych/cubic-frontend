@@ -34,10 +34,8 @@ const Login: React.FC = () => {
       const clientId = config.GOOGLE_CLIENT_ID as string | undefined;
       if (!clientId) throw new Error('GOOGLE_CLIENT_ID is not set');
 
-      // БЕРЕМО точний URI з config
-      const redirectUri =
-        config.GOOGLE_REDIRECT_URI
-        ?? `${window.location.origin}/auth/callback/login`;
+      // БЕРЕМО точний URI з config (БЕЗ /login на кінці!)
+      const redirectUri = config.GOOGLE_REDIRECT_URI ?? `${window.location.origin}/auth/callback`;
 
       const scopes = [
         'openid',
