@@ -34,5 +34,5 @@ export async function getStudentSchedule(
   scheduleId?: string
 ): Promise<Assignment[]> {
   const params = scheduleId ? `?schedule_id=${scheduleId}` : "";
-  return api.get<Assignment[]>(`/api/students/${studentId}/schedule${params}`);
+  return api.get<Assignment[]>(`/students/${studentId}/schedule${params}`);
 }

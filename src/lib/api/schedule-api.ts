@@ -82,7 +82,7 @@ export async function generateScheduleApi(
   payload: GenerateSchedulePayload
 ): Promise<GenerateScheduleResponse> {
   return await api.post<GenerateScheduleResponse>(
-    "/api/schedules/generate",
+    "/schedules/generate",
     payload
   );
 }
@@ -92,7 +92,7 @@ export async function generateScheduleApi(
  */
 export async function fetchSchedulesApi(): Promise<ScheduleResponse[]> {
   const response = await api.get<{ schedules: ScheduleResponse[] }>(
-    "/api/schedules/"
+    "/schedules/"
   );
   return response.schedules || [];
 }
@@ -101,7 +101,7 @@ export async function fetchSchedulesApi(): Promise<ScheduleResponse[]> {
  * Видалити розклад
  */
 export async function deleteScheduleApi(scheduleId: string): Promise<void> {
-  await api.delete(`/api/schedules/${scheduleId}`);
+  await api.delete(`/schedules/${scheduleId}`);
 }
 
 // ===== Legacy типи (для сумісності зі старим кодом) =====
@@ -148,7 +148,7 @@ export async function generateSchedule(
   opts?: { async?: boolean }
 ): Promise<ScheduleGenerationResponseDto> {
   const query = opts?.async === false ? "?async=false" : "";
-  return await api.post(`/api/schedules/generate${query}`, payload);
+  return await api.post(`/schedules/generate${query}`, payload);
 }
 
 
@@ -162,7 +162,7 @@ export interface TimeslotInfo {
 
 export async function fetchTimeslotsMapApi(): Promise<TimeslotInfo[]> {
   const response = await api.get<{ timeslots: TimeslotInfo[] }>(
-    "/api/timeslots/"
+    "/timeslots/"
   );
   return response.timeslots || [];
 }
@@ -178,7 +178,7 @@ export interface ScheduleWithDetailsResponse {
 }
 
 export async function fetchActiveScheduleApi(): Promise<ScheduleWithDetailsResponse> {
-  return await api.get("/api/schedules/active");
+  return await api.get("/schedules/active");
 }
 
 /**
@@ -187,5 +187,5 @@ export async function fetchActiveScheduleApi(): Promise<ScheduleWithDetailsRespo
 export async function fetchScheduleDetailsApi(
   scheduleId: string
 ): Promise<ScheduleWithDetailsResponse> {
-  return await api.get(`/api/schedules/${scheduleId}/details`);
+  return await api.get(`/schedules/${scheduleId}/details`);
 }

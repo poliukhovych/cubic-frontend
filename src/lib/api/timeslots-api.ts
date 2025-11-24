@@ -52,7 +52,7 @@ export async function fetchTimeslotsMapApi(): Promise<
 > {
   try {
     const response = await api.get<{ timeslots: RawTimeslotDto[] }>(
-      "/api/timeslots/"
+      "/timeslots/"
     );
 
     const list = response.timeslots ?? [];

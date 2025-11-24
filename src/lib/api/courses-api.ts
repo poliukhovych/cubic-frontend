@@ -39,12 +39,12 @@ function mapBackendCourse(c: BackendCourse): Course {
 }
 
 export async function fetchCoursesApi(): Promise<Course[]> {
-  const data = await api.get<CoursesListResponse>("/api/courses/");
+  const data = await api.get<CoursesListResponse>("/courses/");
   return data.courses.map(mapBackendCourse);
 }
 
 export async function createCourseApi(payload: CourseWritePayload): Promise<Course> {
-  const created = await api.post<BackendCourse>("/api/courses/", payload);
+  const created = await api.post<BackendCourse>("/courses/", payload);
   return mapBackendCourse(created);
 }
 
@@ -52,10 +52,10 @@ export async function updateCourseApi(
   courseId: string,
   payload: CourseWritePayload,
 ): Promise<Course> {
-  const updated = await api.put<BackendCourse>(`/api/courses/${courseId}`, payload);
+  const updated = await api.put<BackendCourse>(`/courses/${courseId}`, payload);
   return mapBackendCourse(updated);
 }
 
 export async function deleteCourseApi(courseId: string): Promise<void> {
-  await api.delete<void>(`/api/courses/${courseId}`);
+  await api.delete<void>(`/courses/${courseId}`);
 }

@@ -46,20 +46,20 @@ function mapBackendTeacher(t: BackendTeacher): Teacher {
 
 // GET /api/teachers/
 export async function fetchTeachersApi(): Promise<Teacher[]> {
-  const data = await api.get<TeachersListResponse>("/api/teachers/");
+  const data = await api.get<TeachersListResponse>("/teachers/");
   return data.teachers.map(mapBackendTeacher);
 }
 
 // GET /api/teachers/{teacher_id}
 export async function getTeacherApi(teacherId: string): Promise<BackendTeacher> {
-  return api.get<BackendTeacher>(`/api/teachers/${teacherId}`);
+  return api.get<BackendTeacher>(`/teachers/${teacherId}`);
 }
 
 // POST /api/teachers/
 export async function createTeacherApi(
   payload: TeacherWritePayload,
 ): Promise<Teacher> {
-  const created = await api.post<BackendTeacher>("/api/teachers/", payload);
+  const created = await api.post<BackendTeacher>("/teachers/", payload);
   return mapBackendTeacher(created);
 }
 
@@ -69,7 +69,7 @@ export async function updateTeacherApi(
   payload: TeacherWritePayload,
 ): Promise<Teacher> {
   const updated = await api.put<BackendTeacher>(
-    `/api/teachers/${teacherId}`,
+    `/teachers/${teacherId}`,
     payload,
   );
   return mapBackendTeacher(updated);
@@ -77,5 +77,5 @@ export async function updateTeacherApi(
 
 // DELETE /api/teachers/{teacher_id}
 export async function deleteTeacherApi(teacherId: string): Promise<void> {
-  await api.delete<void>(`/api/teachers/${teacherId}`);
+  await api.delete<void>(`/teachers/${teacherId}`);
 }

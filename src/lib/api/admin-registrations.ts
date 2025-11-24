@@ -65,7 +65,7 @@ function mapDtoToRegistration(dto: RegistrationRequestOutDto): RegistrationReque
 
 // Список заявок
 export async function fetchAdminRegistrations(): Promise<RegistrationRequest[]> {
-  const data = await api.get<RegistrationRequestOutDto[]>("/api/admin/registrations/");
+  const data = await api.get<RegistrationRequestOutDto[]>("/admin/registrations/");
   return data.map(mapDtoToRegistration);
 }
 
@@ -113,7 +113,7 @@ export async function updateRegistration(
   console.log('📤 Відправка на бекенд:', backendPayload);
   
   const dto = await api.put<RegistrationRequestOutDto>(
-    `/api/admin/registrations/${id}`,
+    `/admin/registrations/${id}`,
     backendPayload,
   );
   return mapDtoToRegistration(dto);
@@ -134,7 +134,7 @@ export async function approveRegistration(
   }
   
   const dto = await api.patch<RegistrationRequestOutDto>(
-    `/api/admin/registrations/${id}/approve`,
+    `/admin/registrations/${id}/approve`,
     body,
   );
   const reg = mapDtoToRegistration(dto);
@@ -155,7 +155,7 @@ export async function rejectRegistration(
   }
   
   const dto = await api.patch<RegistrationRequestOutDto>(
-    `/api/admin/registrations/${id}/reject`,
+    `/admin/registrations/${id}/reject`,
     body,
   );
   const reg = mapDtoToRegistration(dto);

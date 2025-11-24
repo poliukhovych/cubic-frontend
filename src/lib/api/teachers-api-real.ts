@@ -57,7 +57,7 @@ export async function getTeacherSchedule(
   scheduleId?: string
 ): Promise<Assignment[]> {
   const params = scheduleId ? `?schedule_id=${scheduleId}` : "";
-  return api.get<Assignment[]>(`/api/teachers/${teacherId}/schedule${params}`);
+  return api.get<Assignment[]>(`/teachers/${teacherId}/schedule${params}`);
 }
 
 /**
@@ -65,7 +65,7 @@ export async function getTeacherSchedule(
  * GET /api/teachers/{teacher_id}
  */
 export async function getTeacherById(teacherId: string): Promise<Teacher> {
-  return api.get<Teacher>(`/api/teachers/${teacherId}`);
+  return api.get<Teacher>(`/teachers/${teacherId}`);
 }
 
 /**
@@ -73,7 +73,7 @@ export async function getTeacherById(teacherId: string): Promise<Teacher> {
  * GET /api/teachers/user/{user_id}
  */
 export async function getTeacherByUserId(userId: string): Promise<Teacher> {
-  return api.get<Teacher>(`/api/teachers/user/${userId}`);
+  return api.get<Teacher>(`/teachers/user/${userId}`);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function getTeacherByUserId(userId: string): Promise<Teacher> {
  * GET /api/teachers/{teacher_id}/students
  */
 export async function getTeacherStudents(teacherId: string): Promise<Student[]> {
-  return api.get<Student[]>(`/api/teachers/${teacherId}/students`);
+  return api.get<Student[]>(`/teachers/${teacherId}/students`);
 }
 
 /**
@@ -89,7 +89,7 @@ export async function getTeacherStudents(teacherId: string): Promise<Student[]> 
  * GET /api/teachers/{teacher_id}/courses
  */
 export async function getTeacherCourses(teacherId: string): Promise<Course[]> {
-  return api.get<Course[]>(`/api/teachers/${teacherId}/courses`);
+  return api.get<Course[]>(`/teachers/${teacherId}/courses`);
 }
 
 /**
@@ -97,5 +97,5 @@ export async function getTeacherCourses(teacherId: string): Promise<Course[]> {
  * GET /api/teachers/{teacher_id}/groups
  */
 export async function getTeacherGroups(teacherId: string): Promise<Group[]> {
-  return api.get<Group[]>(`/api/teachers/${teacherId}/groups`);
+  return api.get<Group[]>(`/teachers/${teacherId}/groups`);
 }

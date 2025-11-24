@@ -15,6 +15,6 @@ export interface RoomsListResponse {
 }
 
 export async function fetchRoomsApi(): Promise<RoomsListResponse> {
-  const data = await api.get<RoomsListResponse>("/api/rooms/");
+  const data = await api.get<RoomsListResponse>("/rooms/");
   return data;
 }

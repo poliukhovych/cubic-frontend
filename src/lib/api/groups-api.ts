@@ -37,21 +37,21 @@ function mapBackendGroup(g: BackendGroup): Group {
 }
 
 export async function fetchGroupsApi(): Promise<Group[]> {
-  const data = await api.get<GroupsListResponse>("/api/groups/");
+  const data = await api.get<GroupsListResponse>("/groups/");
   return data.groups.map(mapBackendGroup);
 }
 
 export async function createGroupApi(payload: GroupCreateRequest): Promise<void> {
-  await api.post("/api/groups/", payload);
+  await api.post("/groups/", payload);
 }
 
 export async function updateGroupApi(
   id: string,
   payload: GroupUpdateRequest
 ): Promise<void> {
-  await api.put(`/api/groups/${id}`, payload);
+  await api.put(`/groups/${id}`, payload);
 }
 
 export async function deleteGroupApi(id: string): Promise<void> {
-  await api.delete(`/api/groups/${id}`);
+  await api.delete(`/groups/${id}`);
 }
