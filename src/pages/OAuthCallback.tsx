@@ -47,14 +47,15 @@ const OAuthCallback: React.FC = () => {
 
         const role = sessionStorage.getItem('oauth_role');
 
-        // Determine if this is register or login based on URL path
-        const isRegister = location.pathname.includes('/register/');
-        const isLogin = location.pathname.includes('/login');
+        // Визначаємо login/register на основі sessionStorage
+        // Якщо є role в session - це реєстрація, інакше - логін
+        const isRegister = !!role;
+        const isLogin = !role;
 
         const API_BASE_URL = config.API_BASE_URL || 'http://localhost:8000';
 
-        // Використовуємо той самий redirect_uri
-        const redirectUri = config.GOOGLE_REDIRECT_URI ?? `${window.location.origin}${location.pathname}`;
+        // Використовуємо ЄДИНИЙ redirect_uri з конфігу
+        const redirectUri = config.GOOGLE_REDIRECT_URI ?? `${window.location.origin}/auth/callback`;
 
         let endpoint = '';
         let requestBody: any = {
