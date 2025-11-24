@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { api, API_BASE } from "@/lib/api";
+import { api } from "@/lib/api";
 import { startGoogleOAuth } from "@/lib/googleAuth";
 
 export type Role = "student" | "teacher" | "admin";
@@ -203,8 +203,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (role === "admin") {
       try {
         // Виконуємо автоматичний логін адміністратора
-        const apiBase = API_BASE || 'http://localhost:8000';
-        const response = await fetch(`${apiBase}/api/auth/admin/login`, {
+        // config.API_BASE_URL вже містить /api, тому не додаємо його ще раз
+        const apiBase = config.API_BASE_URL || '';
+        const endpoint = apiBase.endsWith('/api') ? `${apiBase}/auth/admin/login` : `${apiBase}/api/auth/admin/login`;
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
