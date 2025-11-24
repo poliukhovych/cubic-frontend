@@ -15,7 +15,7 @@ export type AdminStats = {
 };
 
 export async function fetchAdminStats(): Promise<AdminStats> {
-  const res = await fetch(`${API_BASE_URL}/api/admin/stats`, {
+  const res = await fetch(`${API_BASE_URL}/admin/stats`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
   if (!res.ok) throw new Error(`Failed to load admin stats: ${res.status}`);
@@ -37,7 +37,7 @@ export type AdminStudent = {
 };
 
 export async function fetchAdminStudentsPaged(offset = 0, limit = 50): Promise<{ students: AdminStudent[]; total: number; }> {
-  const res = await fetch(`${API_BASE_URL}/api/admin/students?offset=${offset}&limit=${limit}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/students?offset=${offset}&limit=${limit}`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
   if (!res.ok) throw new Error(`Failed to load students: ${res.status}`);
@@ -54,7 +54,7 @@ export type AdminTeacher = {
 };
 
 export async function fetchAdminTeachersPaged(offset = 0, limit = 50): Promise<{ teachers: AdminTeacher[]; total: number; }> {
-  const res = await fetch(`${API_BASE_URL}/api/admin/teachers?offset=${offset}&limit=${limit}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/teachers?offset=${offset}&limit=${limit}`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
   if (!res.ok) throw new Error(`Failed to load teachers: ${res.status}`);
@@ -70,7 +70,7 @@ export type AdminGroup = {
 };
 
 export async function fetchAdminGroups(): Promise<AdminGroup[]> {
-  const res = await fetch(`${API_BASE_URL}/api/groups`, {
+  const res = await fetch(`${API_BASE_URL}/groups`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
   if (!res.ok) throw new Error(`Failed to load groups: ${res.status}`);
@@ -78,7 +78,7 @@ export async function fetchAdminGroups(): Promise<AdminGroup[]> {
 }
 
 export async function createGroup(data: { name: string; type: 'bachelor' | 'master'; course: number }): Promise<AdminGroup> {
-  const res = await fetch(`${API_BASE_URL}/api/groups`, {
+  const res = await fetch(`${API_BASE_URL}/groups`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify(data),
@@ -88,7 +88,7 @@ export async function createGroup(data: { name: string; type: 'bachelor' | 'mast
 }
 
 export async function updateGroup(id: string, data: Partial<{ name: string; type: 'bachelor' | 'master'; course: number }>): Promise<AdminGroup> {
-  const res = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/groups/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify(data),
@@ -98,7 +98,7 @@ export async function updateGroup(id: string, data: Partial<{ name: string; type
 }
 
 export async function deleteGroup(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/groups/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
@@ -129,7 +129,7 @@ export async function updateStudent(id: string, data: Partial<{ fullName: string
     payload.status = data.status;
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/students/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify(payload),
@@ -139,7 +139,7 @@ export async function updateStudent(id: string, data: Partial<{ fullName: string
 }
 
 export async function deleteStudent(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/admin/students/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
   });
