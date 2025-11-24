@@ -22,9 +22,9 @@ async function request<T>(
     ...headers,
   };
 
-  // Log request details for /api/auth/me endpoint
-  if (path === '/api/auth/me') {
-    console.log('[API] Request to /api/auth/me:', {
+  // Log request details for /auth/me endpoint
+  if (path === '/auth/me') {
+    console.log('[API] Request to /auth/me:', {
       url,
       method,
       hasToken: !!token,
@@ -40,9 +40,9 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Log response details for /api/auth/me endpoint
-  if (path === '/api/auth/me') {
-    console.log('[API] Response from /api/auth/me:', {
+  // Log response details for /auth/me endpoint
+  if (path === '/auth/me') {
+    console.log('[API] Response from /auth/me:', {
       status: res.status,
       statusText: res.statusText,
       ok: res.ok,

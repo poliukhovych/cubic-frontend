@@ -92,13 +92,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const token = localStorage.getItem('access_token') || localStorage.getItem('cubic_token');
-      console.log('[AUTH][refreshMe] Attempting to fetch /api/auth/me', {
+      console.log('[AUTH][refreshMe] Attempting to fetch /auth/me', {
         hasToken: !!token,
         tokenLength: token?.length,
         tokenPreview: token ? `${token.substring(0, 20)}...` : null,
       });
 
-      const me = await api.get<any>("/api/auth/me");
+      const me = await api.get<any>("/auth/me");
       const mapped: User | null = me
         ? {
             id: me.user_id ?? me.id ?? "",
