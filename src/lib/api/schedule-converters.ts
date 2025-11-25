@@ -4,6 +4,7 @@ import type { Lesson } from "@/types/schedule";
 import { fetchTimeslotsMapApi, getDefaultTimeslotMap } from "./timeslots-api";
 import { fetchGroupsApi } from "./groups-api";
 import { fetchCoursesApi } from "./courses-api";
+import { fetchRoomsApi } from "./rooms-api";
 
 /**
  * Конвертує масив Assignment з бекенду в Lesson для фронтенду
@@ -12,15 +13,17 @@ export async function convertAssignmentsToLessons(
   assignments: Assignment[]
 ): Promise<Lesson[]> {
   // Завантажуємо необхідні довідники
-  const [timeslotsMap, groups, courses] = await Promise.all([
+  const [timeslotsMap, groups, courses, roomsData] = await Promise.all([
     fetchTimeslotsMapApi().catch(() => getDefaultTimeslotMap()),
     fetchGroupsApi().catch(() => []),
     fetchCoursesApi().catch(() => []),
+    fetchRoomsApi().catch(() => ({ rooms: [], total: 0 })),
   ]);
 
   // Створюємо мапи для швидкого пошуку
   const groupsMap = new Map(groups.map((g) => [g.id, g]));
   const coursesMap = new Map(courses.map((c) => [c.id, c]));
+  const roomsMap = new Map(roomsData.rooms.map((r) => [r.roomId || r.room_id || r.id, r]));
 
   const lessons: Lesson[] = [];
 
@@ -46,7 +49,11 @@ export async function convertAssignmentsToLessons(
     const subject = course?.title || assignment.courseId;
 
     // Формуємо локацію
-    const location = assignment.roomName || (assignment.roomId ? `Ауд. ${assignment.roomId}` : "Онлайн");
+    let location = "Онлайн";
+    if (assignment.roomId) {
+      const room = roomsMap.get(assignment.roomId);
+      location = room?.name ? `Ауд. ${room.name}` : `Ауд. ${assignment.roomId}`;
+    }
 
     lessons.push({
       id: assignment.assignmentId,

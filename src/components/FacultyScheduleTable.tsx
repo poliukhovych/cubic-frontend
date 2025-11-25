@@ -308,7 +308,7 @@ const SelectorRow: React.FC<{
   dense,
   setDense,
 }) => (
-  <div className="flex flex-wrap gap-4 mb-6 items-center p-4 bg-background/30 backdrop-blur rounded-xl border border-white/10">
+  <div className="hidden flex flex-wrap gap-4 mb-6 items-center p-4 bg-background/30 backdrop-blur rounded-xl border border-white/10">
     <div className="flex items-center gap-2">
       <span className="text-sm font-medium text-muted-foreground">Рівень освіти:</span>
       <Select value={level} onValueChange={(v) => setLevel(v as Level)}>

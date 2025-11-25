@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { getTeacherStudents, getTeacherByUserId } from "@/lib/api/teachers-api-real";
 import type { Student } from "@/lib/api/teachers-api-real";
+import { fetchGroupsApi } from "@/lib/api/groups-api";
 import { useAuth } from "@/types/auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,28 +41,35 @@ function downloadCsv(rows: string[][], filename: string) {
   downloadText(csv, filename, "text/csv;charset=utf-8");
 }
 
-function groupStudents(students: Student[]): GroupBucket[] {
+function groupStudents(students: Student[], groupsMap: Map<string, string>): GroupBucket[] {
   const map = new Map<string, GroupBucket>();
   for (const s of students) {
+    // Отримуємо назву групи з маппінгу або використовуємо "Без групи"
+    const groupName = s.groupId ? (groupsMap.get(s.groupId) || s.groupId) : "Без групи";
+    
     // Визначаємо підгрупу на основі subgroupNo (1 = 'a', 2 = 'b', інше = без підгрупи)
     const subgroup = s.groupId && s.groupId.includes('-') 
       ? (s.groupId.split('-')[1] === 'a' ? 'a' : s.groupId.split('-')[1] === 'b' ? 'b' : undefined)
       : undefined;
     
-    const k: GroupKey = { groupId: s.groupId || "Без групи", subgroup };
+    const k: GroupKey = { groupId: groupName, subgroup };
     const kk = keyOf(k);
     if (!map.has(kk)) map.set(kk, { key: k, label: kk, students: [] });
     map.get(kk)!.students.push(s);
   }
   // сортування груп: за groupId (числово, якщо можливо), потім за subgroup
   return Array.from(map.values()).sort((a, b) => {
-    if (a.key.groupId === b.key.groupId) {
-      const asg = a.key.subgroup ?? "", bsg = b.key.subgroup ?? "";
+    const aGroupId = a.key.groupId || "";
+    const bGroupId = b.key.groupId || "";
+    
+    if (aGroupId === bGroupId) {
+      const asg = a.key.subgroup || "";
+      const bsg = b.key.subgroup || "";
       return asg.localeCompare(bsg, "uk");
     }
-    const an = Number(a.key.groupId), bn = Number(b.key.groupId);
+    const an = Number(aGroupId), bn = Number(bGroupId);
     if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
-    return a.key.groupId.localeCompare(b.key.groupId, "uk");
+    return aGroupId.localeCompare(bGroupId, "uk");
   });
 }
 
@@ -85,7 +93,11 @@ const GroupPanel = React.memo(function GroupPanel({
 }) {
   // студенти відсортовані за ПІБ
   const studentsSorted = React.useMemo(
-    () => bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk")),
+    () => bucket.students.slice().sort((a, b) => {
+      const aName = a.fullName || a.full_name || "";
+      const bName = b.fullName || b.full_name || "";
+      return aName.localeCompare(bName, "uk");
+    }),
     [bucket.students]
   );
 
@@ -183,12 +195,16 @@ const GroupPanel = React.memo(function GroupPanel({
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="bg-primary/15 text-primary font-medium text-sm border border-primary/20">
-                        {s.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        {(() => {
+                          const parts = (s.fullName || s.full_name || '').split(' ');
+                          // Беремо першу літеру прізвища (parts[0]) та першу літеру імені (parts[1])
+                          const initials = (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+                          return initials.toUpperCase();
+                        })()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate text-foreground">{s.fullName}</div>
-                      <div className="text-sm text-muted-foreground truncate">{s.userId || 'Без email'}</div>
+                      <div className="font-medium truncate text-foreground">{s.fullName || s.full_name}</div>
                     </div>
                     <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/30">
                       {j + 1}
@@ -208,6 +224,7 @@ const GroupPanel = React.memo(function GroupPanel({
 const TeacherStudents: React.FC = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [groups, setGroups] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -224,11 +241,20 @@ const TeacherStudents: React.FC = () => {
         // Отримуємо teacher_id з user_id
         const teacher = await getTeacherByUserId(user.id);
         
-        // Отримуємо список студентів
-        const studentsList = await getTeacherStudents(teacher.teacherId);
+        // Завантажуємо групи та студентів паралельно
+        const [studentsList, groupsList] = await Promise.all([
+          getTeacherStudents(teacher.teacherId),
+          fetchGroupsApi()
+        ]);
         
         if (alive) {
           setStudents(studentsList);
+          // Створюємо мапу groupId -> groupName
+          const groupsMap = new Map<string, string>();
+          groupsList.forEach(g => {
+            groupsMap.set(g.id, g.name);
+          });
+          setGroups(groupsMap);
         }
       } catch (err) {
         console.error("Failed to load students:", err);
@@ -246,7 +272,7 @@ const TeacherStudents: React.FC = () => {
     return () => { alive = false; };
   }, [user]);
 
-  const buckets = useMemo(() => groupStudents(students), [students]);
+  const buckets = useMemo(() => groupStudents(students, groups), [students, groups]);
 
   const columns = useMemo(() => {
     const cols: { b: GroupBucket; i: number }[][] = [[], []];
@@ -266,8 +292,8 @@ const TeacherStudents: React.FC = () => {
   const exportTxt = useCallback((bucket: GroupBucket) => {
     const list = bucket.students
       .slice()
-      .sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"))
-      .map((s, idx) => `${idx + 1}. ${s.fullName}${s.userId ? ` — ${s.userId}` : ""}`)
+      .sort((a, b) => (a.fullName || a.full_name || "").localeCompare(b.fullName || b.full_name || "", "uk"))
+      .map((s, idx) => `${idx + 1}. ${s.fullName || s.full_name}${s.userId ? ` — ${s.userId}` : ""}`)
       .join("\r\n");
 
     const header = `Список студентів ${bucket.label}\r\n`;
@@ -280,11 +306,11 @@ const TeacherStudents: React.FC = () => {
     const rows: string[][] = [
       ["№", "ПІБ", "User ID", "Група", "Підгрупа"],
     ];
-    const sorted = bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"));
+    const sorted = bucket.students.slice().sort((a, b) => (a.fullName || a.full_name || "").localeCompare(b.fullName || b.full_name || "", "uk"));
     sorted.forEach((s, i) => {
       rows.push([
         String(i + 1),
-        s.fullName,
+        s.fullName || s.full_name || "",
         s.userId ?? "",
         String(s.groupId ?? ""),
         "", // subgroup not available in API response
@@ -295,10 +321,10 @@ const TeacherStudents: React.FC = () => {
   }, []);
 
   const exportSheets = useCallback(async (bucket: GroupBucket) => {
-    const sorted = bucket.students.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, "uk"));
+    const sorted = bucket.students.slice().sort((a, b) => (a.fullName || a.full_name || "").localeCompare(b.fullName || b.full_name || "", "uk"));
     const rows: string[][] = [
       ["№", "ПІБ", "User ID", "Група", "Підгрупа"],
-      ...sorted.map((s, i) => [String(i + 1), s.fullName, s.userId ?? "", String(s.groupId ?? ""), ""]),
+      ...sorted.map((s, i) => [String(i + 1), s.fullName || s.full_name || "", s.userId ?? "", String(s.groupId ?? ""), ""]),
     ];
     const toTsv = (r: string[][]) => r.map(row => row.map(v => (v ?? "").replace(/\t/g, " ")).join("\t")).join("\r\n");
     const tsv = toTsv(rows);

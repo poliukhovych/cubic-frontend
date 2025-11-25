@@ -3,7 +3,8 @@
 import { api } from "@/lib/api";
 
 export interface Room {
-  room_id: string;
+  roomId?: string;
+  room_id?: string;
   id?: string;
   name: string;
   capacity: number;

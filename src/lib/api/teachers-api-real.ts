@@ -32,7 +32,8 @@ export interface Student {
   status: string;
   groupId: string | null;
   userId: string | null;
-  fullName: string;
+  fullName?: string;
+  full_name?: string; // Backend returns snake_case
 }
 
 export interface Course {

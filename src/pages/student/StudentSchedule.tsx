@@ -1,6 +1,6 @@
 // src/pages/student/StudentSchedule.tsx
 import React, { useEffect, useState } from "react";
-import { getStudentSchedule } from "@/lib/api/students-api";
+import { getStudentSchedule, getStudentByUserId } from "@/lib/api/students-api";
 import { convertAssignmentsToLessons } from "@/lib/api/schedule-converters";
 import type { Lesson } from "@/types/schedule";
 import { useAuth } from "@/types/auth";
@@ -48,8 +48,11 @@ const StudentSchedule: React.FC = () => {
         setLoading(true);
         setError(null);
         
+        // Отримуємо student_id з user_id
+        const student = await getStudentByUserId(user.id);
+        
         // Отримуємо розклад з бекенду
-        const assignments = await getStudentSchedule(user.id);
+        const assignments = await getStudentSchedule(student.studentId);
         
         // Конвертуємо в формат Lesson
         const convertedLessons = await convertAssignmentsToLessons(assignments);

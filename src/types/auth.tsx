@@ -73,21 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ----------- PROD: /api/auth/me -----------
   const refreshMe = useCallback(async () => {
-    // ✅ DEV: якщо є cubic_token, використовуємо дані з localStorage
-    if (DEV_AUTH && localStorage.getItem('cubic_token')) {
-      const stored = loadStoredUser();
-      if (stored) {
-        setUser(stored);
-        console.log('[AUTH][DEV] Loaded user from localStorage:', stored);
-        return;
-      }
-    }
-
     // Check if token exists before making API call
     if (!hasToken()) {
       setUser(null);
       saveStoredUser(null);
       return;
+    }
+
+    // ✅ DEV: якщо є ТІЛЬКИ cubic_token (фейковий токен), використовуємо дані з localStorage
+    const hasOnlyCubicToken = localStorage.getItem('cubic_token') && !localStorage.getItem('access_token');
+    if (DEV_AUTH && hasOnlyCubicToken) {
+      const stored = loadStoredUser();
+      if (stored) {
+        setUser(stored);
+        console.log('[AUTH][DEV] Loaded user from localStorage (cubic_token only):', stored);
+        return;
+      }
     }
 
     try {
@@ -99,19 +100,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       const me = await api.get<any>("/auth/me");
+      console.log('[AUTH][refreshMe] Raw response from /auth/me:', me);
       const mapped: User | null = me
         ? {
-            id: me.user_id ?? me.id ?? "",
-            name: (me.first_name && me.last_name)
+            id: me.userId ?? me.user_id ?? me.id ?? "",
+            name: (me.firstName && me.lastName)
+              ? `${me.firstName} ${me.lastName}`
+              : (me.first_name && me.last_name)
               ? `${me.first_name} ${me.last_name}`
               : (me.name ?? me.email ?? ""),
             email: me.email ?? "",
             role: me.role ?? null,
-            status: (me.is_active === false) ? "disabled" : "active",
+            status: (me.isActive === false || me.is_active === false) ? "disabled" : "active",
           }
         : null;
       setUser(mapped);
-      console.log('[AUTH][refreshMe] Loaded user:', mapped);
+      console.log('[AUTH][refreshMe] Mapped user:', mapped);
+      console.log('[AUTH][refreshMe] ID mapping:', { 
+        userId: me?.userId, 
+        user_id: me?.user_id, 
+        id: me?.id,
+        final: mapped?.id 
+      });
       saveStoredUser(mapped);
     } catch (err) {
       console.error('[AUTH][refreshMe] Failed to fetch /api/auth/me:', err);

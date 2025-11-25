@@ -26,6 +26,14 @@ export interface Student {
 }
 
 /**
+ * Отримати інформацію про студента за user_id
+ * GET /api/students/user/{user_id}
+ */
+export async function getStudentByUserId(userId: string): Promise<Student> {
+  return api.get<Student>(`/students/user/${userId}`);
+}
+
+/**
  * Отримати розклад студента за student_id
  * GET /api/students/{student_id}/schedule?schedule_id={schedule_id}
  */
