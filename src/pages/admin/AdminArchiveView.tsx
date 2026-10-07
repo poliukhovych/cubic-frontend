@@ -2,16 +2,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
-  getScheduleSnapshot,
-  fetchFacultySchedule,
-  saveFacultySchedule,
-  createScheduleSnapshot,
-} from "@/lib/fakeApi/admin";
+  fetchScheduleDetailsApi,
+  activateScheduleApi,
+  type ScheduleResponse,
+} from "@/lib/api/schedule-api";
 import FacultyScheduleTable from "@/components/FacultyScheduleTable";
 import ExportButtons from "@/components/ExportButtons";
 import { exportSchedulePdf } from "@/lib/utils/pdf";
-import { useAuth } from "@/types/auth";
-import type { ScheduleSnapshot, FacultyLesson } from "@/types/schedule";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,29 +18,32 @@ import {
   Archive, 
   ArrowLeft, 
   Calendar, 
-  User, 
-  MessageSquare, 
   CheckCircle,
   Clock
 } from "lucide-react";
 
-type Level = "bachelor" | "master";
-
 const AdminArchiveView: React.FC = () => {
   const { id } = useParams();
-  const { user } = useAuth();
-  const [snap, setSnap] = useState<ScheduleSnapshot | null>(null);
+  const [snap, setSnap] = useState<ScheduleResponse | null>(null);
+  const [lessonsCount, setLessonsCount] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (id) getScheduleSnapshot(id).then(setSnap);
+    if (!id) return;
+    fetchScheduleDetailsApi(id)
+      .then((d) => {
+        setSnap(d.schedule);
+        setLessonsCount(d.assignments.length);
+      })
+      .catch(() => setError("Розклад не знайдено"));
   }, [id]);
 
   const onExportAll = () => {
     if (tableRef.current && snap) {
-      exportSchedulePdf(tableRef.current, `${snap.title}.pdf`, snap.title);
+      exportSchedulePdf(tableRef.current, `${snap.label}.pdf`, snap.label);
     }
   };
   const onExportCourse = onExportAll; // поки що експортуємо саме те, що на екрані
@@ -53,33 +53,12 @@ const AdminArchiveView: React.FC = () => {
     if (!snap) return;
     setBusy(true);
     try {
-      // 1) Автобекап поточного “актуального” розкладу
-      const [b, m] = await Promise.all([
-        fetchFacultySchedule("bachelor" as Level),
-        fetchFacultySchedule("master" as Level),
-      ]);
-      await createScheduleSnapshot(
-        `Автобекап перед призначенням: ${snap.title}`,
-        "Система автоматично зберегла попередній актуальний розклад.",
-        "both",
-        user?.name ?? "Admin",
-        [...b, ...m]
-      );
-
-      // 2) Переписати актуальний розклад із цього знімка
-      const bLessons = snap.lessons.filter(
-        (l) => l.level === "bachelor"
-      ) as FacultyLesson[];
-      const mLessons = snap.lessons.filter(
-        (l) => l.level === "master"
-      ) as FacultyLesson[];
-      await Promise.all([
-        saveFacultySchedule("bachelor" as Level, bLessons),
-        saveFacultySchedule("master" as Level, mLessons),
-      ]);
-
+      setSnap(await activateScheduleApi(snap.scheduleId));
       setConfirmOpen(false);
-      alert("Розклад призначено актуальним. Попередній збережено до Архіву.");
+    } catch (e) {
+      const err = e as { detail?: string; message?: string };
+      setError(err?.detail || err?.message || "Не вдалося зробити розклад активним");
+      setConfirmOpen(false);
     } finally {
       setBusy(false);
     }
@@ -108,10 +87,10 @@ const AdminArchiveView: React.FC = () => {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-primary" />
-                <CardTitle>Зробити розклад актуальним?</CardTitle>
+                <CardTitle>Зробити розклад активним?</CardTitle>
               </div>
               <CardDescription>
-                Поточний актуальний розклад буде автоматично збережено в Архів.
+                Студенти й викладачі побачать цей розклад. Попередній активний залишиться в архіві.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -144,8 +123,12 @@ const AdminArchiveView: React.FC = () => {
       <Card className="backdrop-blur-md bg-background/30 border-white/10 shadow-2xl">
         <CardContent className="p-6">
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5 animate-spin" />
-            Завантаження...
+            {error ?? (
+              <>
+                <Clock className="w-5 h-5 animate-spin" />
+                Завантаження...
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -197,42 +180,34 @@ const AdminArchiveView: React.FC = () => {
           <CardHeader>
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5 text-primary" />
-              <CardTitle className="text-xl">{snap.title}</CardTitle>
+              <CardTitle className="text-xl">{snap.label}</CardTitle>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                <span>Збережено: {new Date(snap.createdAt).toLocaleString()}</span>
+                <span>Створено: {new Date(snap.createdAt).toLocaleString()}</span>
               </div>
-              {snap.createdBy && (
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  <span>Автор: {snap.createdBy}</span>
-                </div>
+              <span>Занять: {lessonsCount}</span>
+              {snap.isActive && (
+                <Badge variant="outline" className="border-primary/30 text-primary">
+                  Активний
+                </Badge>
               )}
-              <Badge variant="outline" className="border-primary/30 text-primary">
-                {snap.parity === "both" ? "Вся сітка" : snap.parity}
-              </Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {snap.comment && (
-              <div className="mb-4 p-3 bg-muted/20 rounded-lg border border-white/10">
-                <div className="flex items-start gap-2">
-                  <MessageSquare className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                  <p className="text-sm">{snap.comment}</p>
-                </div>
-              </div>
+            {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+
+            {!snap.isActive && (
+              <Button
+                onClick={() => setConfirmOpen(true)}
+                className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+                size="lg"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Зробити цей розклад активним
+              </Button>
             )}
-            
-            <Button
-              onClick={() => setConfirmOpen(true)}
-              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
-              size="lg"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Зробити цей розклад актуальним
-            </Button>
           </CardContent>
         </Card>
       </motion.div>
@@ -253,7 +228,7 @@ const AdminArchiveView: React.FC = () => {
         "
       >
         <div ref={tableRef}>
-          <FacultyScheduleTable editable={false} lessons={snap.lessons} />
+          <FacultyScheduleTable editable={false} scheduleId={snap.scheduleId} />
         </div>
       </div>
 

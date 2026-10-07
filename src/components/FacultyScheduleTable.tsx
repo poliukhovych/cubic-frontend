@@ -35,6 +35,7 @@ import { fetchRoomsApi } from "@/lib/api/rooms-api";
 import type { Room } from "@/lib/api/rooms-api";
 import { fetchTimeslotsMapApi, getDefaultTimeslotMap } from "@/lib/api/timeslots-api";
 import type { GeneratedAssignment } from "@/lib/api/schedule-api";
+import { fetchActiveScheduleApi, fetchScheduleDetailsApi } from "@/lib/api/schedule-api";
 
 import {
   saveFacultySchedule,
@@ -684,7 +685,8 @@ async function convertAssignmentsToLessons(
 const FacultyScheduleTable: React.FC<{
   editable: boolean;
   lessons?: FacultyLesson[]; // якщо передали — не фетчимо з fakeApi
-}> = ({ editable, lessons }) => {
+  scheduleId?: string; // який розклад показати; без нього — активний
+}> = ({ editable, lessons, scheduleId }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const topScrollRef = React.useRef<HTMLDivElement>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
@@ -769,7 +771,7 @@ const FacultyScheduleTable: React.FC<{
     logSetAllLessons("props.lessons", lessons);
   }, [lessons]);
 
-  // [FLOW] 1. Якщо пропси не містять lesson-ів, відновлюємо їх з localStorage одразу після маунта.
+  // [FLOW] 1. Якщо пропси не містять lesson-ів, вантажимо розклад з бекенду (активний або scheduleId).
   useEffect(() => {
     if (initialLessonsProvidedRef.current) {
       console.log("ℹ️ Skipping loadSchedule because lessons prop provided on mount");
@@ -780,23 +782,10 @@ const FacultyScheduleTable: React.FC<{
 
     const loadSchedule = async () => {
       try {
-        console.log("🔄 Loading schedule from last generation...");
-
-        const lastScheduleJson = localStorage.getItem("last_generated_schedule");
-
-        if (!lastScheduleJson) {
-          console.warn("⚠️  No generated schedule found, keeping current lessons");
-          return;
-        }
-
-        const scheduleData = JSON.parse(lastScheduleJson);
-        console.log("📊 Schedule data:", scheduleData);
-
-        const rawAssignments = Array.isArray(scheduleData?.schedule)
-          ? (scheduleData.schedule as BackendAssignment[])
-          : Array.isArray(scheduleData?.assignments)
-            ? (scheduleData.assignments as BackendAssignment[])
-            : [];
+        const scheduleData = scheduleId
+          ? await fetchScheduleDetailsApi(scheduleId)
+          : await fetchActiveScheduleApi();
+        const rawAssignments: BackendAssignment[] = scheduleData?.assignments ?? [];
 
         if (!rawAssignments.length) {
           console.warn("⚠️  Schedule has no assignments, keeping current lessons");
@@ -819,7 +808,7 @@ const FacultyScheduleTable: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scheduleId]);
 
   useEffect(() => {
     const loadTeachers = async () => {
