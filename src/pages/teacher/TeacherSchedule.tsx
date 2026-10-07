@@ -1,41 +1,132 @@
+// src/pages/teacher/TeacherSchedule.tsx
 import React, { useEffect, useState } from "react";
-import { fetchTeacherSchedule } from "@/lib/fakeApi/teacher";
-import type { TeacherSchedule as T } from "@/types/schedule";
+import { getTeacherSchedule, getTeacherByUserId } from "@/lib/api/teachers-api-real";
+import { convertAssignmentsToLessons } from "@/lib/api/schedule-converters";
+import type { Lesson } from "@/types/schedule";
 import { useAuth } from "@/types/auth";
-
-const days = ["","Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
+import { getFirstTeachingMonday, getParity, getWeekIndex, getWeekStartFromIndex, formatWeekRange } from "@/lib/time/academicWeek";
+import { motion } from "framer-motion";
+import { Calendar } from "lucide-react";
+import Reveal from "@/components/Reveal";
+import Crossfade from "@/components/Crossfade";
+import WeekPickerCard from "@/components/WeekPickerCard";
+import WeekCalendar from "@/components/WeekCalendar";
+import LessonCard from "@/components/LessonCard";
+import Spinner from "@/components/Spinner";
 
 const TeacherSchedule: React.FC = () => {
   const { user } = useAuth();
-  const [data, setData] = useState<T | null>(null);
-  useEffect(() => { if (user) fetchTeacherSchedule(user.id).then(setData); }, [user]);
+  const semesterStart = React.useMemo(() => getFirstTeachingMonday(new Date()), []);
 
-  if (!data) return <div className="text-[var(--muted)]">Завантаження...</div>;
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [week, setWeek] = useState<number>(() => getWeekIndex(new Date(), { startMonday: semesterStart }));
 
-  const byDay = new Map<number, T["lessons"]>();
-  for (let i=1;i<=7;i++) byDay.set(i, []);
-  data.lessons.forEach(l => byDay.get(l.weekday)!.push(l));
+  const currentWeek = React.useMemo(() => getWeekIndex(new Date(), { startMonday: semesterStart }), [semesterStart]);
+  const weekStart = React.useMemo(() => getWeekStartFromIndex(semesterStart, week), [semesterStart, week]);
+  const parity: "odd" | "even" = React.useMemo(() => getParity(weekStart, { startMonday: semesterStart }), [weekStart, semesterStart]);
+  const rangeText = React.useMemo(() => formatWeekRange(weekStart), [weekStart]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    
+    const loadSchedule = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Отримуємо teacher_id з user_id
+        const teacher = await getTeacherByUserId(user.id);
+        
+        // Отримуємо розклад викладача
+        const assignments = await getTeacherSchedule(teacher.teacherId);
+        
+        // Конвертуємо в формат Lesson
+        const convertedLessons = await convertAssignmentsToLessons(assignments);
+        
+        if (alive) {
+          setLessons(convertedLessons);
+        }
+      } catch (err) {
+        console.error("Failed to load teacher schedule:", err);
+        if (alive) {
+          setError("Не вдалося завантажити розклад");
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadSchedule();
+    return () => { alive = false; };
+  }, [user]);
+
+  const totalWeeks = 16;
+
+  if (loading) return <Spinner />;
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+          >
+            Спробувати знову
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="text-2xl font-semibold">Мій розклад (викладач)</div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[1,2,3,4,5,6,7].map(d => (
-          <div className="card p-4" key={d}>
-            <div className="font-semibold mb-2">{days[d]}</div>
-            <div className="space-y-2">
-              {byDay.get(d)!.length === 0 && <div className="text-[var(--muted)] text-sm">Немає занять</div>}
-              {byDay.get(d)!.map(l => (
-                <div key={l.id} className="rounded-xl border border-[var(--border)] p-3">
-                  <div className="text-sm">{l.time.start} — {l.time.end}</div>
-                  <div className="font-medium">{l.subject}</div>
-                  <div className="text-sm text-[var(--muted)]">Група: {l.group.name} · {l.location ?? "—"}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 flex items-center justify-center text-center"
+      >
+        <div className="flex items-center gap-3 glass backdrop-blur-sm px-6 py-4 rounded-2xl border border-border/20">
+          <Calendar className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-semibold text-foreground">Мій розклад</h1>
+        </div>
+      </motion.div>
+
+      <Reveal y={0} blurPx={6} opacityFrom={0} delayMs={80}>
+        <WeekPickerCard
+          week={week}
+          totalWeeks={totalWeeks}
+          rangeText={rangeText}
+          onChange={setWeek}
+          currentWeek={Math.min(currentWeek, totalWeeks)}
+          titleCenter={<div className="text-center text-sm text-[var(--muted)]">{parity === "odd" ? "Непарний тиждень" : "Парний тиждень"}</div>}
+        />
+      </Reveal>
+
+      <Crossfade stateKey={`${week}-${parity}`}>
+        <Reveal y={0} blurPx={8} opacityFrom={0} delayMs={120}>
+          <WeekCalendar
+            lessons={lessons}
+            parity={parity}
+            weekStart={weekStart}
+            renderLesson={(lesson, isToday) => (
+              <LessonCard
+                lesson={lesson}
+                isToday={isToday}
+                userRole="teacher"
+                subjectId={lesson.id}
+              />
+            )}
+          />
+        </Reveal>
+      </Crossfade>
     </div>
   );
 };

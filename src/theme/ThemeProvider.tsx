@@ -1,3 +1,4 @@
+// src/theme/ThemeProvider.tsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "light" | "dark";
@@ -8,20 +9,40 @@ const KEY = "fh.theme";
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const getInitial = (): Theme => {
-    const saved = localStorage.getItem(KEY) as Theme | null;
-    if (saved) return saved;
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-    return prefersDark ? "dark" : "light";
+    try {
+      const saved = localStorage.getItem(KEY) as Theme | null;
+      if (saved === "light" || saved === "dark") return saved;
+    } catch {}
+    return "dark";
   };
 
   const [theme, setTheme] = useState<Theme>(getInitial);
 
+  // застосовуємо тему + зберігаємо
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(KEY, theme);
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    try { localStorage.setItem(KEY, theme); } catch {}
   }, [theme]);
 
-  const value = useMemo(() => ({ theme, setTheme, toggle: () => setTheme(t => (t === "light" ? "dark" : "light")) }), [theme]);
+  const toggle = () => {
+    const root = document.documentElement;
+    // 1) заморозити анімації/transition/backdrop-filter на час перемикання
+    root.classList.add("theme-switching");
+
+    // 2) змінити тему
+    setTheme((t) => (t === "light" ? "dark" : "light"));
+
+    // 3) дати WebKit відрепейнтити без ефектів
+    requestAnimationFrame(() => {
+      // невеличкий форс-рефлоу допомагає проти шлейфів у Safari
+      void root.offsetHeight;
+      // повернути анімації через ~120мс (зазвичай достатньо 80–150мс)
+      setTimeout(() => root.classList.remove("theme-switching"), 120);
+    });
+  };
+
+  const value = useMemo(() => ({ theme, setTheme, toggle }), [theme]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

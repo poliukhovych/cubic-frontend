@@ -1,3 +1,4 @@
+//src/lib/fakeApi/index.ts
 export const apiDelay = (ms = 300) => new Promise(res => setTimeout(res, ms));
 
 export function ok<T>(data: T): Promise<T> {
