@@ -751,6 +751,7 @@ const FacultyScheduleTable: React.FC<{
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<Partial<FacultyLesson>>({});
   const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
@@ -859,6 +860,9 @@ const FacultyScheduleTable: React.FC<{
     fetchCoursesApi()
       .then(setCourses)
       .catch((err) => console.error("❌ Failed to load courses:", err));
+    fetchRoomsApi()
+      .then((r) => setRooms(r.rooms ?? []))
+      .catch((err) => console.error("❌ Failed to load rooms:", err));
   }, []);
 
 
@@ -1350,6 +1354,17 @@ const FacultyScheduleTable: React.FC<{
     setEditBuf((prev) => ({ ...prev, subject: title, ...(teacherName ? { teacher: teacherName } : {}) }));
   };
 
+  const roomOptions = () => {
+    const options = rooms
+      .map((r) => ({ value: r.name, label: `${r.name} · ${r.capacity} місць` }))
+      .sort((a, b) => a.value.localeCompare(b.value, "uk", { numeric: true }));
+    const current = editBuf.location?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return [{ value: "", label: "Без аудиторії" }, ...options];
+  };
+
   const renderInlineEditor = () => (
     <div
       className={[
@@ -1378,13 +1393,15 @@ const FacultyScheduleTable: React.FC<{
             onChange={(v) => setEditBuf((prev) => ({ ...prev, teacher: v }))}
             options={teachers.map((t) => ({ value: t.name, label: t.name }))}
           />
-          <input
-            className="input flex-1 hover-lift"
+          <NiceSelect
+            searchable
+            className="flex-1"
+            ariaLabel="Аудиторія"
             placeholder="Аудиторія"
-            value={editBuf.location ?? ""}
-            onChange={(e) =>
-              setEditBuf((prev) => ({ ...prev, location: e.target.value }))
-            }
+            searchPlaceholder="Пошук аудиторії…"
+            value={editBuf.location || undefined}
+            onChange={(v) => setEditBuf((prev) => ({ ...prev, location: v }))}
+            options={roomOptions()}
           />
         </div>
         <div className="flex items-center gap-2">
