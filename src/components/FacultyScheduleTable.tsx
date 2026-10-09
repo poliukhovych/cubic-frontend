@@ -474,6 +474,9 @@ const normalizeId = (value?: string | number | null): string | null => {
   return str.length ? str : null;
 };
 
+// "any" runs every week, so it overlaps both odd and even weeks
+const parityOverlaps = (a: Parity, b: Parity) => a === "any" || b === "any" || a === b;
+
 /** Lessons only carry display labels; saving maps them back to backend ids with these tables. */
 type LessonLookup = {
   timeslotByKey: Map<string, number>; // `${weekday}-${pair}-${parity}`
@@ -750,6 +753,8 @@ const FacultyScheduleTable: React.FC<{
   const [saving, setSaving] = useState(false);
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<Partial<FacultyLesson>>({});
   const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
@@ -855,6 +860,12 @@ const FacultyScheduleTable: React.FC<{
     };
 
     loadTeachers();
+    fetchCoursesApi()
+      .then(setCourses)
+      .catch((err) => console.error("❌ Failed to load courses:", err));
+    fetchRoomsApi()
+      .then((r) => setRooms(r.rooms ?? []))
+      .catch((err) => console.error("❌ Failed to load rooms:", err));
   }, []);
 
 
@@ -1211,6 +1222,24 @@ const FacultyScheduleTable: React.FC<{
       return;
     }
 
+    // Та сама перевірка накладок, що й на бекенді, але з назвами замість id
+    const clashes: string[] = [];
+    kept.forEach((a, i) =>
+      kept.slice(i + 1).forEach((b) => {
+        if (a.weekday !== b.weekday || a.pair !== b.pair || !parityOverlaps(a.parity, b.parity)) return;
+        const where = `${DAYS[a.weekday]}, ${a.pair} пара`;
+        const room = a.location?.trim();
+        if (room && room === b.location?.trim()) clashes.push(`${where}: аудиторія ${room} у ${a.group} і ${b.group}`);
+        if (a.teacher?.trim() && a.teacher.trim() === b.teacher?.trim()) clashes.push(`${where}: ${a.teacher} у ${a.group} і ${b.group}`);
+        if (a.group === b.group) clashes.push(`${where}: у ${a.group} дві пари`);
+      })
+    );
+    if (clashes.length) {
+      const more = clashes.length > 3 ? ` (і ще ${clashes.length - 3})` : "";
+      setSaveStatus(`Не збережено, накладки: ${clashes.slice(0, 3).join("; ")}${more}`);
+      return;
+    }
+
     setSaving(true);
     setSaveStatus(null);
     try {
@@ -1323,6 +1352,68 @@ const FacultyScheduleTable: React.FC<{
 }, [viewLessons, groups, dense, editingId, baseHalfMin, allLessons.length]); // Додаємо allLessons.length як dependency
 
   /* ---------- інлайн-редактор (вставляється замість картки) ---------- */
+  // Предмет обирається лише з курсів, прив'язаних до групи колонки (інакше його не зберегти)
+  const subjectOptions = () => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const scoped = groupId ? courses.filter((c) => c.groupIds.includes(groupId)) : courses;
+    const options = scoped
+      .map((c) => ({ value: c.title, label: c.code ? `${c.title} · ${c.code}` : c.title }))
+      .sort((a, b) => a.value.localeCompare(b.value, "uk"));
+    const current = editBuf.subject?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return options;
+  };
+
+  const pickSubject = (title: string) => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const course = courses.find(
+      (c) => c.title === title && (!groupId || c.groupIds.includes(groupId))
+    );
+    const teacherName = teachers.find((t) => t.id === course?.teacherId)?.name;
+    setEditBuf((prev) => ({ ...prev, subject: title, ...(teacherName ? { teacher: teacherName } : {}) }));
+  };
+
+  /** Інша пара, що вже займає цю аудиторію/викладача у слоті пари, яку редагуємо */
+  const occupiedBy = (field: "location" | "teacher", value: string) =>
+    allLessons.find(
+      (l) =>
+        l.id !== editingId &&
+        l.weekday === editBuf.weekday &&
+        l.pair === editBuf.pair &&
+        parityOverlaps(l.parity, (editBuf.parity as Parity) ?? "any") &&
+        (l[field] ?? "").trim() === value
+    );
+
+  const roomOptions = () => {
+    const options = rooms
+      .map((r) => {
+        const busy = occupiedBy("location", r.name);
+        return {
+          value: r.name,
+          busy: Boolean(busy),
+          label: `${r.name} · ${r.capacity} місць · ${busy ? `зайнята (${busy.group})` : "вільна"}`,
+        };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk", { numeric: true }))
+      .map(({ value, label }) => ({ value, label }));
+    const current = editBuf.location?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return [{ value: "", label: "Без аудиторії" }, ...options];
+  };
+
+  const teacherOptions = () =>
+    teachers
+      .map((t) => {
+        const busy = occupiedBy("teacher", t.name);
+        return { value: t.name, busy: Boolean(busy), label: busy ? `${t.name} · зайнятий (${busy.group})` : t.name };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk"))
+      .map(({ value, label }) => ({ value, label }));
+
   const renderInlineEditor = () => (
     <div
       className={[
@@ -1331,30 +1422,35 @@ const FacultyScheduleTable: React.FC<{
       ].join(" ")}
     >
       <div className="flex flex-col gap-2">
-        <input
-          className="input hover-lift"
-          placeholder="Назва предмету"
-          value={editBuf.subject ?? ""}
-          onChange={(e) =>
-            setEditBuf((prev) => ({ ...prev, subject: e.target.value }))
-          }
+        <NiceSelect
+          searchable
+          ariaLabel="Предмет"
+          placeholder="Предмет"
+          searchPlaceholder="Пошук предмета цієї групи…"
+          emptyText="У групи немає такого предмета (додайте в «Курси»)"
+          value={editBuf.subject || undefined}
+          onChange={pickSubject}
+          options={subjectOptions()}
         />
         <div className="flex gap-2">
           <NiceSelect
+            searchable
             className="flex-1"
             ariaLabel="Викладач"
             placeholder="Викладач"
             value={editBuf.teacher || undefined}
             onChange={(v) => setEditBuf((prev) => ({ ...prev, teacher: v }))}
-            options={teachers.map((t) => ({ value: t.name, label: t.name }))}
+            options={teacherOptions()}
           />
-          <input
-            className="input flex-1 hover-lift"
+          <NiceSelect
+            searchable
+            className="flex-1"
+            ariaLabel="Аудиторія"
             placeholder="Аудиторія"
-            value={editBuf.location ?? ""}
-            onChange={(e) =>
-              setEditBuf((prev) => ({ ...prev, location: e.target.value }))
-            }
+            searchPlaceholder="Пошук аудиторії…"
+            value={editBuf.location || undefined}
+            onChange={(v) => setEditBuf((prev) => ({ ...prev, location: v }))}
+            options={roomOptions()}
           />
         </div>
         <div className="flex items-center gap-2">
