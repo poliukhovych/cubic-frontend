@@ -474,6 +474,9 @@ const normalizeId = (value?: string | number | null): string | null => {
   return str.length ? str : null;
 };
 
+// "any" runs every week, so it overlaps both odd and even weeks
+const parityOverlaps = (a: Parity, b: Parity) => a === "any" || b === "any" || a === b;
+
 /** Lessons only carry display labels; saving maps them back to backend ids with these tables. */
 type LessonLookup = {
   timeslotByKey: Map<string, number>; // `${weekday}-${pair}-${parity}`
@@ -1219,6 +1222,24 @@ const FacultyScheduleTable: React.FC<{
       return;
     }
 
+    // Та сама перевірка накладок, що й на бекенді, але з назвами замість id
+    const clashes: string[] = [];
+    kept.forEach((a, i) =>
+      kept.slice(i + 1).forEach((b) => {
+        if (a.weekday !== b.weekday || a.pair !== b.pair || !parityOverlaps(a.parity, b.parity)) return;
+        const where = `${DAYS[a.weekday]}, ${a.pair} пара`;
+        const room = a.location?.trim();
+        if (room && room === b.location?.trim()) clashes.push(`${where}: аудиторія ${room} у ${a.group} і ${b.group}`);
+        if (a.teacher?.trim() && a.teacher.trim() === b.teacher?.trim()) clashes.push(`${where}: ${a.teacher} у ${a.group} і ${b.group}`);
+        if (a.group === b.group) clashes.push(`${where}: у ${a.group} дві пари`);
+      })
+    );
+    if (clashes.length) {
+      const more = clashes.length > 3 ? ` (і ще ${clashes.length - 3})` : "";
+      setSaveStatus(`Не збережено, накладки: ${clashes.slice(0, 3).join("; ")}${more}`);
+      return;
+    }
+
     setSaving(true);
     setSaveStatus(null);
     try {
@@ -1354,16 +1375,44 @@ const FacultyScheduleTable: React.FC<{
     setEditBuf((prev) => ({ ...prev, subject: title, ...(teacherName ? { teacher: teacherName } : {}) }));
   };
 
+  /** Інша пара, що вже займає цю аудиторію/викладача у слоті пари, яку редагуємо */
+  const occupiedBy = (field: "location" | "teacher", value: string) =>
+    allLessons.find(
+      (l) =>
+        l.id !== editingId &&
+        l.weekday === editBuf.weekday &&
+        l.pair === editBuf.pair &&
+        parityOverlaps(l.parity, (editBuf.parity as Parity) ?? "any") &&
+        (l[field] ?? "").trim() === value
+    );
+
   const roomOptions = () => {
     const options = rooms
-      .map((r) => ({ value: r.name, label: `${r.name} · ${r.capacity} місць` }))
-      .sort((a, b) => a.value.localeCompare(b.value, "uk", { numeric: true }));
+      .map((r) => {
+        const busy = occupiedBy("location", r.name);
+        return {
+          value: r.name,
+          busy: Boolean(busy),
+          label: `${r.name} · ${r.capacity} місць · ${busy ? `зайнята (${busy.group})` : "вільна"}`,
+        };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk", { numeric: true }))
+      .map(({ value, label }) => ({ value, label }));
     const current = editBuf.location?.trim();
     if (current && !options.some((o) => o.value === current)) {
       options.unshift({ value: current, label: current });
     }
     return [{ value: "", label: "Без аудиторії" }, ...options];
   };
+
+  const teacherOptions = () =>
+    teachers
+      .map((t) => {
+        const busy = occupiedBy("teacher", t.name);
+        return { value: t.name, busy: Boolean(busy), label: busy ? `${t.name} · зайнятий (${busy.group})` : t.name };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk"))
+      .map(({ value, label }) => ({ value, label }));
 
   const renderInlineEditor = () => (
     <div
@@ -1391,7 +1440,7 @@ const FacultyScheduleTable: React.FC<{
             placeholder="Викладач"
             value={editBuf.teacher || undefined}
             onChange={(v) => setEditBuf((prev) => ({ ...prev, teacher: v }))}
-            options={teachers.map((t) => ({ value: t.name, label: t.name }))}
+            options={teacherOptions()}
           />
           <NiceSelect
             searchable
