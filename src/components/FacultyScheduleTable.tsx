@@ -721,7 +721,7 @@ async function convertAssignmentsToLessons(
       subject,
       teacher: teacherLabel,
       location: location ?? undefined,
-      pinned: false,
+      pinned: !!assignment.pinned,
     };
 
     return lesson;
@@ -1214,6 +1214,7 @@ const FacultyScheduleTable: React.FC<{
         teacherId,
         roomId: roomId ?? null,
         courseType: courseRef.courseType,
+        pinned: !!l.pinned,
       });
     }
     if (problems.length) {
