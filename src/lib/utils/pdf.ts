@@ -1,4 +1,4 @@
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 
 /** Експортує DOM-вузол як A4 landscape PDF (масштаб підганяється) */
