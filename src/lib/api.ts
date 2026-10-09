@@ -2,6 +2,7 @@
 import { config } from "@/config/runtime";
 
 export const API_BASE = config.API_BASE_URL;
+export const AUTH_EXPIRED_EVENT = "auth:expired";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type Json = object | null | undefined;
@@ -32,6 +33,9 @@ async function request<T>(
   if (!res.ok) {
     let err: any = { status: res.status, statusText: res.statusText };
     try { err = { ...err, ...(await res.json()) }; } catch {}
+    if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
     throw err;
   }
 

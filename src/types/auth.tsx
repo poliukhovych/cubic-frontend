@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { api } from "@/lib/api";
+import { api, AUTH_EXPIRED_EVENT } from "@/lib/api";
 import { startGoogleOAuth } from "@/lib/googleAuth";
 
 export type Role = "student" | "teacher" | "admin";
@@ -171,6 +171,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [refreshMe]);
+
+  // Expired/revoked token: drop the session so ProtectedRoute sends the user to /login
+  useEffect(() => {
+    const handleExpired = () => {
+      TOKEN_KEYS.forEach(key => localStorage.removeItem(key));
+      localStorage.removeItem('user');
+      setUser(null);
+      saveStoredUser(null);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+  }, []);
 
   // Зберігаємо user локально
   useEffect(() => {
