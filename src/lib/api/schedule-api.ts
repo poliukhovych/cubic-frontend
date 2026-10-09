@@ -195,3 +195,23 @@ export async function fetchScheduleDetailsApi(
 ): Promise<ScheduleWithDetailsResponse> {
   return await api.get(`/schedules/${scheduleId}/details`);
 }
+
+export interface AssignmentWritePayload {
+  timeslotId: number;
+  groupId: string;
+  subgroupNo: number;
+  courseId: string;
+  teacherId: string;
+  roomId: string | null;
+  courseType: string;
+}
+
+/**
+ * Зберегти ручні зміни: повністю замінює заняття розкладу (409 — накладки, 422 — невідомі id)
+ */
+export async function replaceScheduleAssignmentsApi(
+  scheduleId: string,
+  assignments: AssignmentWritePayload[]
+): Promise<ScheduleWithDetailsResponse> {
+  return await api.put(`/schedules/${scheduleId}/assignments`, { assignments });
+}
