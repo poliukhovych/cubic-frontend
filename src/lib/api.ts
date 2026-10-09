@@ -2,6 +2,7 @@
 import { config } from "@/config/runtime";
 
 export const API_BASE = config.API_BASE_URL;
+export const AUTH_EXPIRED_EVENT = "auth:expired";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type Json = object | null | undefined;
@@ -22,17 +23,6 @@ async function request<T>(
     ...headers,
   };
 
-  // Log request details for /auth/me endpoint
-  if (path === '/auth/me') {
-    console.log('[API] Request to /auth/me:', {
-      url,
-      method,
-      hasToken: !!token,
-      tokenLength: token?.length,
-      headers: { ...requestHeaders, Authorization: token ? `Bearer ${token.substring(0, 20)}...` : undefined },
-    });
-  }
-
   const res = await fetch(url, {
     method,
     credentials: "include",
@@ -40,18 +30,12 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Log response details for /auth/me endpoint
-  if (path === '/auth/me') {
-    console.log('[API] Response from /auth/me:', {
-      status: res.status,
-      statusText: res.statusText,
-      ok: res.ok,
-    });
-  }
-
   if (!res.ok) {
     let err: any = { status: res.status, statusText: res.statusText };
     try { err = { ...err, ...(await res.json()) }; } catch {}
+    if (res.status === 401 && token && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
     throw err;
   }
 

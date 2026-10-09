@@ -24,6 +24,15 @@ import {
 import { fetchGroupsApi } from "@/lib/api/groups-api";
 import { fetchTeachersApi } from "@/lib/api/teachers-api";
 
+const EMPTY_FORM = {
+  code: "",
+  title: "",
+  duration: "",
+  countPerWeek: "1",
+  teacherId: "",
+  groupIds: [] as string[],
+};
+
 const AdminCourses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -33,13 +42,7 @@ const AdminCourses: React.FC = () => {
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [courseForm, setCourseForm] = useState({
-    code: "",
-    title: "",
-    duration: "",
-    teacherId: "",
-    groupIds: [] as string[],
-  });
+  const [courseForm, setCourseForm] = useState(EMPTY_FORM);
 
   // Load data
   useEffect(() => {
@@ -102,6 +105,15 @@ const AdminCourses: React.FC = () => {
     return durationNumber;
   };
 
+  const parseCountPerWeekOrAlert = (): number | null => {
+    const n = Number(courseForm.countPerWeek);
+    if (!Number.isInteger(n) || n < 1 || n > 50) {
+      alert("Кількість пар на тиждень — ціле число від 1 до 50");
+      return null;
+    }
+    return n;
+  };
+
   const buildTeacherIds = (): string[] =>
     courseForm.teacherId && courseForm.teacherId.length > 0
       ? [courseForm.teacherId]
@@ -115,29 +127,24 @@ const AdminCourses: React.FC = () => {
     }
     const durationNumber = parseDurationOrAlert();
     if (durationNumber == null) return;
+    const countPerWeek = parseCountPerWeekOrAlert();
+    if (countPerWeek == null) return;
 
     try {
       const created = await createCourseApi({
         name: courseForm.title,
         duration: durationNumber,
+        code: courseForm.code.trim() || null,
         group_ids: courseForm.groupIds,
         teacher_ids: buildTeacherIds(),
+        count_per_week: countPerWeek,
       });
 
-      const newCourse: Course = {
-        ...created,
-        code: courseForm.code || created.code || "",
-      };
+      const newCourse: Course = created;
 
       setCourses([...courses, newCourse]);
       setDialogOpen(false);
-      setCourseForm({
-        code: "",
-        title: "",
-        duration: "",
-        teacherId: "",
-        groupIds: [],
-      });
+      setCourseForm(EMPTY_FORM);
     } catch (err: any) {
       console.error("Failed to create course:", err);
       alert(err.detail || "Не вдалося створити курс");
@@ -159,31 +166,26 @@ const AdminCourses: React.FC = () => {
       alert("Немає тривалості курсу (duration)");
       return;
     }
+    const countPerWeek = parseCountPerWeekOrAlert();
+    if (countPerWeek == null) return;
 
     try {
       const updated = await updateCourseApi(editingCourse.id, {
         name: courseForm.title,
         duration: durationNumber,
+        code: courseForm.code.trim() || null,
         group_ids: courseForm.groupIds,
         teacher_ids: buildTeacherIds(),
+        count_per_week: countPerWeek,
       });
 
-      const next: Course = {
-        ...updated,
-        code: courseForm.code || updated.code || "",
-      };
+      const next: Course = updated;
 
       setCourses(courses.map((c) => (c.id === next.id ? next : c)));
 
       setDialogOpen(false);
       setEditingCourse(null);
-      setCourseForm({
-        code: "",
-        title: "",
-        duration: "",
-        teacherId: "",
-        groupIds: [],
-      });
+      setCourseForm(EMPTY_FORM);
     } catch (err: any) {
       console.error("Failed to update course:", err);
       alert(err.detail || "Не вдалося оновити курс");
@@ -211,6 +213,7 @@ const AdminCourses: React.FC = () => {
         course.duration !== undefined && course.duration !== null
           ? String(course.duration)
           : "",
+      countPerWeek: String(course.countPerWeek ?? 1),
       teacherId: course.teacherId || "",
       groupIds: course.groupIds,
     });
@@ -258,13 +261,7 @@ const AdminCourses: React.FC = () => {
         <Button
           onClick={() => {
             setEditingCourse(null);
-            setCourseForm({
-              code: "",
-              title: "",
-              duration: "",
-              teacherId: "",
-              groupIds: [],
-            });
+            setCourseForm(EMPTY_FORM);
             setDialogOpen(true);
           }}
           className="btn-primary"
@@ -299,6 +296,7 @@ const AdminCourses: React.FC = () => {
                     <th className="text-left p-3 text-muted font-medium">Назва</th>
                     <th className="text-left p-3 text-muted font-medium">Викладач</th>
                     <th className="text-left p-3 text-muted font-medium">Групи</th>
+                    <th className="text-left p-3 text-muted font-medium">Пар/тижд.</th>
                     <th className="text-right p-3 text-muted font-medium">Дії</th>
                   </tr>
                 </thead>
@@ -312,12 +310,16 @@ const AdminCourses: React.FC = () => {
                       className="border-b border-border/50 hover:bg-surface-2/30 transition-colors"
                     >
                       <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className="font-mono bg-blue-500/20 text-blue-300 border-blue-500/30"
-                        >
-                          {c.code}
-                        </Badge>
+                        {c.code ? (
+                          <Badge
+                            variant="outline"
+                            className="font-mono bg-blue-500/20 text-blue-300 border-blue-500/30"
+                          >
+                            {c.code}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="p-3 font-medium">{c.title}</td>
                       <td className="p-3 text-muted">
@@ -349,6 +351,7 @@ const AdminCourses: React.FC = () => {
                           )}
                         </div>
                       </td>
+                      <td className="p-3">{c.countPerWeek ?? 1}</td>
                       <td className="p-3">
                         <div className="flex gap-2 justify-end">
                           <Button
@@ -371,7 +374,7 @@ const AdminCourses: React.FC = () => {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-muted">
+                      <td colSpan={6} className="p-8 text-center text-muted">
                         Нічого не знайдено...
                       </td>
                     </tr>
@@ -418,6 +421,26 @@ const AdminCourses: React.FC = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
+                  Пар на тиждень
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  step={1}
+                  value={courseForm.countPerWeek}
+                  onChange={(e) =>
+                    setCourseForm({ ...courseForm, countPerWeek: e.target.value })
+                  }
+                  className="input"
+                />
+                <p className="text-xs text-muted mt-1">
+                  Стільки пар солвер поставить кожній групі щотижня (1–50)
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">
                   Назва курсу
                 </label>
                 <Input
@@ -432,10 +455,10 @@ const AdminCourses: React.FC = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Код курсу (локальний)
+                  Код курсу
                 </label>
                 <Input
-                  placeholder="DB101 (не зберігається в бекенді)"
+                  placeholder="Напр. DB101 (необов'язково)"
                   value={courseForm.code}
                   onChange={(e) =>
                     setCourseForm({ ...courseForm, code: e.target.value })

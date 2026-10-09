@@ -4,7 +4,6 @@ import type { FacultyLesson, Parity } from "@/types/schedule";
 import type { Teacher } from "@/types/teachers";
 import type { Group } from "@/types/students";
 import type { Course } from "@/types/courses";
-import { useAuth } from "@/types/auth";
 import {
   Pin,
   PinOff,
@@ -18,7 +17,6 @@ import {
   Plus,
   Shuffle,
 } from "lucide-react";
-import { createPortal } from "react-dom";
 import NiceSelect from "@/ui/NiceSelect";
 import {
   Select,
@@ -35,11 +33,12 @@ import { fetchRoomsApi } from "@/lib/api/rooms-api";
 import type { Room } from "@/lib/api/rooms-api";
 import { fetchTimeslotsMapApi, getDefaultTimeslotMap } from "@/lib/api/timeslots-api";
 import type { GeneratedAssignment } from "@/lib/api/schedule-api";
-
 import {
-  saveFacultySchedule,
-  createScheduleSnapshot,
-} from "@/lib/fakeApi/admin";
+  fetchActiveScheduleApi,
+  fetchScheduleDetailsApi,
+  replaceScheduleAssignmentsApi,
+  type AssignmentWritePayload,
+} from "@/lib/api/schedule-api";
 
 /* ----- константи часу та днів (4 пари) ----- */
 const TIMES: Record<1 | 2 | 3 | 4, { start: string; end: string }> = {
@@ -474,13 +473,33 @@ const normalizeId = (value?: string | number | null): string | null => {
   const str = String(value).trim();
   return str.length ? str : null;
 };
+
+// "any" runs every week, so it overlaps both odd and even weeks
+const parityOverlaps = (a: Parity, b: Parity) => a === "any" || b === "any" || a === b;
+
+/** Lessons only carry display labels; saving maps them back to backend ids with these tables. */
+type LessonLookup = {
+  timeslotByKey: Map<string, number>; // `${weekday}-${pair}-${parity}`
+  groupByLabel: Map<string, { groupId: string; subgroupNo: number }>;
+  courseBySubject: Map<string, { courseId: string; courseType: string }>;
+  teacherByLabel: Map<string, string>;
+  roomByLabel: Map<string, string>;
+};
+
 // [FLOW] 2. Convert BackendAssignment[] → FacultyLesson[] за допомогою каталогів (викладачі/групи/курси/аудиторії/таймслоти).
 async function convertAssignmentsToLessons(
   assignments: BackendAssignment[]
-): Promise<FacultyLesson[]> {
+): Promise<{ lessons: FacultyLesson[]; lookup: LessonLookup }> {
+  const lookup: LessonLookup = {
+    timeslotByKey: new Map(),
+    groupByLabel: new Map(),
+    courseBySubject: new Map(),
+    teacherByLabel: new Map(),
+    roomByLabel: new Map(),
+  };
   if (!assignments?.length) {
     console.warn("⚠️  No assignments to convert");
-    return [];
+    return { lessons: [], lookup };
   }
 
   console.log("📥 Converting assignments to lessons...", assignments.length);
@@ -556,6 +575,22 @@ async function convertAssignmentsToLessons(
     groups: groupMap.size,
     courses: courseMap.size,
     rooms: roomMap.size,
+  });
+
+  timeslotMap.forEach((ts, id) =>
+    lookup.timeslotByKey.set(`${ts.weekday}-${ts.pair}-${ts.parity}`, Number(id))
+  );
+  groupMap.forEach((g, id) => lookup.groupByLabel.set(g.name, { groupId: id, subgroupNo: 1 }));
+  courseMap.forEach((c, id) => {
+    const name = (c as Course & { name?: string })?.name ?? c?.title;
+    if (name) lookup.courseBySubject.set(name, { courseId: id, courseType: "lec" });
+  });
+  teacherMap.forEach((t, id) => {
+    if (t?.name) lookup.teacherByLabel.set(t.name, id);
+  });
+  (roomsResp?.rooms ?? []).forEach((room) => {
+    const id = normalizeId(room.room_id) ?? normalizeId(room.id);
+    if (id && room.name) lookup.roomByLabel.set(room.name, id);
   });
 
   assignments.slice(0, 3).forEach((assignment, idx) => {
@@ -656,6 +691,21 @@ async function convertAssignmentsToLessons(
       room?.name ??
       (assignment.roomId != null ? String(assignment.roomId) : undefined);
 
+    // Exact labels shown in the table, so unchanged lessons always map back to their ids
+    lookup.groupByLabel.set(groupLabel, {
+      groupId: assignment.groupId,
+      subgroupNo: typeof assignment.subgroupNo === "number" ? assignment.subgroupNo : 1,
+    });
+    if (subject) {
+      lookup.courseBySubject.set(subject, {
+        courseId: assignment.courseId,
+        courseType: assignment.courseType ?? "lec",
+      });
+    }
+    if (teacherLabel) lookup.teacherByLabel.set(teacherLabel, assignment.teacherId);
+    const roomId = normalizeId(assignment.roomId);
+    if (location && roomId) lookup.roomByLabel.set(location, roomId);
+
     const lesson: FacultyLesson = {
       id:
         assignment.assignmentId ??
@@ -671,25 +721,25 @@ async function convertAssignmentsToLessons(
       subject,
       teacher: teacherLabel,
       location: location ?? undefined,
-      pinned: false,
+      pinned: !!assignment.pinned,
     };
 
     return lesson;
   });
 
   console.log("✅ Converted", lessons.length, "lessons");
-  return lessons;
+  return { lessons, lookup };
 }
 
 const FacultyScheduleTable: React.FC<{
   editable: boolean;
   lessons?: FacultyLesson[]; // якщо передали — не фетчимо з fakeApi
-}> = ({ editable, lessons }) => {
+  scheduleId?: string; // який розклад показати; без нього — активний
+}> = ({ editable, lessons, scheduleId }) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const topScrollRef = React.useRef<HTMLDivElement>(null);
   const [scrollWidth, setScrollWidth] = useState(0);
 
-  const { user } = useAuth();
   const [level, setLevel] = useState<Level>("bachelor");
   const [course, setCourse] = useState<number>(1);
   const [parity, setParity] = useState<Parity>("any");
@@ -703,14 +753,15 @@ const FacultyScheduleTable: React.FC<{
   const [saving, setSaving] = useState(false);
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<Partial<FacultyLesson>>({});
   const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
 
-  const [snapOpen, setSnapOpen] = useState(false);
-  const [snapTitle, setSnapTitle] = useState("");
-  const [snapComment, setSnapComment] = useState("");
-  const [snapBusy, setSnapBusy] = useState(false);
+  const [loadedScheduleId, setLoadedScheduleId] = useState<string | null>(null);
+  const lookupRef = React.useRef<LessonLookup | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const initialLessonsProvidedRef = React.useRef(Boolean(lessons && lessons.length));
 
   const logSetAllLessons = (
@@ -743,33 +794,13 @@ const FacultyScheduleTable: React.FC<{
     } catch {}
   };
 
-  const handleConfirmSnapshot = async () => {
-    if (!snapTitle.trim() || !snapComment.trim()) return;
-    try {
-      setSnapBusy(true);
-      await saveAll(); // збереже у fakeApi твій “активний” стан
-      await createScheduleSnapshot(
-        snapTitle.trim(),
-        snapComment.trim(),
-        "both", // повна сітка
-        user?.name ?? "Admin",
-        allLessons // зберігаємо весь набір пар
-      );
-      setSnapOpen(false);
-      setSnapTitle("");
-      setSnapComment("");
-    } finally {
-      setSnapBusy(false);
-    }
-  };
-
   /* ---------- дані ---------- */
   useEffect(() => {
     if (!lessons || lessons.length === 0) return;
     logSetAllLessons("props.lessons", lessons);
   }, [lessons]);
 
-  // [FLOW] 1. Якщо пропси не містять lesson-ів, відновлюємо їх з localStorage одразу після маунта.
+  // [FLOW] 1. Якщо пропси не містять lesson-ів, вантажимо розклад з бекенду (активний або scheduleId).
   useEffect(() => {
     if (initialLessonsProvidedRef.current) {
       console.log("ℹ️ Skipping loadSchedule because lessons prop provided on mount");
@@ -780,33 +811,22 @@ const FacultyScheduleTable: React.FC<{
 
     const loadSchedule = async () => {
       try {
-        console.log("🔄 Loading schedule from last generation...");
-
-        const lastScheduleJson = localStorage.getItem("last_generated_schedule");
-
-        if (!lastScheduleJson) {
-          console.warn("⚠️  No generated schedule found, keeping current lessons");
-          return;
-        }
-
-        const scheduleData = JSON.parse(lastScheduleJson);
-        console.log("📊 Schedule data:", scheduleData);
-
-        const rawAssignments = Array.isArray(scheduleData?.schedule)
-          ? (scheduleData.schedule as BackendAssignment[])
-          : Array.isArray(scheduleData?.assignments)
-            ? (scheduleData.assignments as BackendAssignment[])
-            : [];
+        const scheduleData = scheduleId
+          ? await fetchScheduleDetailsApi(scheduleId)
+          : await fetchActiveScheduleApi();
+        const rawAssignments: BackendAssignment[] = scheduleData?.assignments ?? [];
+        if (!cancelled) setLoadedScheduleId(scheduleData?.schedule?.scheduleId ?? null);
 
         if (!rawAssignments.length) {
           console.warn("⚠️  Schedule has no assignments, keeping current lessons");
           return;
         }
 
-        const convertedLessons = await convertAssignmentsToLessons(rawAssignments);
+        const { lessons: convertedLessons, lookup } = await convertAssignmentsToLessons(rawAssignments);
         console.log("📅 Converted lessons:", convertedLessons);
 
         if (!cancelled) {
+          lookupRef.current = lookup;
           logSetAllLessons("loadSchedule.converted", convertedLessons);
         }
       } catch (err) {
@@ -819,7 +839,7 @@ const FacultyScheduleTable: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scheduleId]);
 
   useEffect(() => {
     const loadTeachers = async () => {
@@ -840,18 +860,14 @@ const FacultyScheduleTable: React.FC<{
     };
 
     loadTeachers();
+    fetchCoursesApi()
+      .then(setCourses)
+      .catch((err) => console.error("❌ Failed to load courses:", err));
+    fetchRoomsApi()
+      .then((r) => setRooms(r.rooms ?? []))
+      .catch((err) => console.error("❌ Failed to load rooms:", err));
   }, []);
 
-
-  useEffect(() => {
-    if (snapOpen) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
-  }, [snapOpen]);
 
   // [FLOW] 3. viewLessons наразі напряму відображає allLessons (без додаткових фільтрів для дебагу).
   const viewLessons = useMemo(() => allLessons, [allLessons]);
@@ -1160,20 +1176,88 @@ const FacultyScheduleTable: React.FC<{
   /* ---------- збереження (з очисткою чернеток) ---------- */
   const saveAll = async () => {
     if (!editable) return;
-    setSaving(true);
+    const lookup = lookupRef.current;
+    if (!loadedScheduleId || !lookup) {
+      setSaveStatus("Немає завантаженого розкладу для збереження");
+      return;
+    }
 
-    // Видаляємо незаповнені чернетки (обов'язково потрібні subject і teacher)
-    logSetAllLessons("saveAll", (prev) =>
-      prev.filter((l) => {
-        if (!draftIds.has(l.id)) return true;
-        const ok = l.subject?.trim() && l.teacher?.trim();
-        return !!ok;
+    // Незаповнені чернетки (без предмета чи викладача) не зберігаємо
+    const kept = allLessons.filter(
+      (l) => !draftIds.has(l.id) || (l.subject?.trim() && l.teacher?.trim())
+    );
+    const problems: string[] = [];
+    const payload: AssignmentWritePayload[] = [];
+    for (const l of kept) {
+      const timeslotId = lookup.timeslotByKey.get(`${l.weekday}-${l.pair}-${l.parity}`);
+      const group = lookup.groupByLabel.get((l.group ?? "").trim());
+      const courseRef = lookup.courseBySubject.get((l.subject ?? "").trim());
+      const teacherId = lookup.teacherByLabel.get((l.teacher ?? "").trim());
+      const location = l.location?.trim();
+      const roomId = location ? lookup.roomByLabel.get(location) : undefined;
+      if (!timeslotId || !group || !courseRef || !teacherId || (location && !roomId)) {
+        const missing = [
+          !timeslotId && "час",
+          !group && `група «${l.group}»`,
+          !courseRef && `предмет «${l.subject}»`,
+          !teacherId && `викладач «${l.teacher}»`,
+          location && !roomId && `аудиторія «${location}»`,
+        ].filter(Boolean);
+        problems.push(`${DAYS[l.weekday]}, ${l.pair} пара, ${l.group}: ${missing.join(", ")}`);
+        continue;
+      }
+      payload.push({
+        timeslotId,
+        groupId: group.groupId,
+        subgroupNo: group.subgroupNo,
+        courseId: courseRef.courseId,
+        teacherId,
+        roomId: roomId ?? null,
+        courseType: courseRef.courseType,
+        pinned: !!l.pinned,
+      });
+    }
+    if (problems.length) {
+      const more = problems.length > 3 ? ` (і ще ${problems.length - 3})` : "";
+      setSaveStatus(`Не збережено, не знайдено: ${problems.slice(0, 3).join("; ")}${more}`);
+      return;
+    }
+
+    // Та сама перевірка накладок, що й на бекенді, але з назвами замість id
+    const clashes: string[] = [];
+    kept.forEach((a, i) =>
+      kept.slice(i + 1).forEach((b) => {
+        if (a.weekday !== b.weekday || a.pair !== b.pair || !parityOverlaps(a.parity, b.parity)) return;
+        const where = `${DAYS[a.weekday]}, ${a.pair} пара`;
+        const room = a.location?.trim();
+        if (room && room === b.location?.trim()) clashes.push(`${where}: аудиторія ${room} у ${a.group} і ${b.group}`);
+        if (a.teacher?.trim() && a.teacher.trim() === b.teacher?.trim()) clashes.push(`${where}: ${a.teacher} у ${a.group} і ${b.group}`);
+        if (a.group === b.group) clashes.push(`${where}: у ${a.group} дві пари`);
       })
     );
-    setDraftIds(new Set());
+    if (clashes.length) {
+      const more = clashes.length > 3 ? ` (і ще ${clashes.length - 3})` : "";
+      setSaveStatus(`Не збережено, накладки: ${clashes.slice(0, 3).join("; ")}${more}`);
+      return;
+    }
 
-    await saveFacultySchedule(level, allLessons);
-    setSaving(false);
+    setSaving(true);
+    setSaveStatus(null);
+    try {
+      const saved = await replaceScheduleAssignmentsApi(loadedScheduleId, payload);
+      const { lessons: fresh, lookup: freshLookup } = await convertAssignmentsToLessons(
+        saved.assignments ?? []
+      );
+      lookupRef.current = freshLookup;
+      setDraftIds(new Set());
+      logSetAllLessons("saveAll", fresh);
+      setSaveStatus("Збережено");
+    } catch (e) {
+      const detail = (e as { detail?: unknown })?.detail;
+      setSaveStatus(typeof detail === "string" ? `Не збережено: ${detail}` : "Не вдалося зберегти");
+    } finally {
+      setSaving(false);
+    }
   };
 
   /* ---------- синхронізація верхнього скролу ---------- */
@@ -1269,6 +1353,68 @@ const FacultyScheduleTable: React.FC<{
 }, [viewLessons, groups, dense, editingId, baseHalfMin, allLessons.length]); // Додаємо allLessons.length як dependency
 
   /* ---------- інлайн-редактор (вставляється замість картки) ---------- */
+  // Предмет обирається лише з курсів, прив'язаних до групи колонки (інакше його не зберегти)
+  const subjectOptions = () => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const scoped = groupId ? courses.filter((c) => c.groupIds.includes(groupId)) : courses;
+    const options = scoped
+      .map((c) => ({ value: c.title, label: c.code ? `${c.title} · ${c.code}` : c.title }))
+      .sort((a, b) => a.value.localeCompare(b.value, "uk"));
+    const current = editBuf.subject?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return options;
+  };
+
+  const pickSubject = (title: string) => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const course = courses.find(
+      (c) => c.title === title && (!groupId || c.groupIds.includes(groupId))
+    );
+    const teacherName = teachers.find((t) => t.id === course?.teacherId)?.name;
+    setEditBuf((prev) => ({ ...prev, subject: title, ...(teacherName ? { teacher: teacherName } : {}) }));
+  };
+
+  /** Інша пара, що вже займає цю аудиторію/викладача у слоті пари, яку редагуємо */
+  const occupiedBy = (field: "location" | "teacher", value: string) =>
+    allLessons.find(
+      (l) =>
+        l.id !== editingId &&
+        l.weekday === editBuf.weekday &&
+        l.pair === editBuf.pair &&
+        parityOverlaps(l.parity, (editBuf.parity as Parity) ?? "any") &&
+        (l[field] ?? "").trim() === value
+    );
+
+  const roomOptions = () => {
+    const options = rooms
+      .map((r) => {
+        const busy = occupiedBy("location", r.name);
+        return {
+          value: r.name,
+          busy: Boolean(busy),
+          label: `${r.name} · ${r.capacity} місць · ${busy ? `зайнята (${busy.group})` : "вільна"}`,
+        };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk", { numeric: true }))
+      .map(({ value, label }) => ({ value, label }));
+    const current = editBuf.location?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return [{ value: "", label: "Без аудиторії" }, ...options];
+  };
+
+  const teacherOptions = () =>
+    teachers
+      .map((t) => {
+        const busy = occupiedBy("teacher", t.name);
+        return { value: t.name, busy: Boolean(busy), label: busy ? `${t.name} · зайнятий (${busy.group})` : t.name };
+      })
+      .sort((a, b) => Number(a.busy) - Number(b.busy) || a.value.localeCompare(b.value, "uk"))
+      .map(({ value, label }) => ({ value, label }));
+
   const renderInlineEditor = () => (
     <div
       className={[
@@ -1277,30 +1423,35 @@ const FacultyScheduleTable: React.FC<{
       ].join(" ")}
     >
       <div className="flex flex-col gap-2">
-        <input
-          className="input hover-lift"
-          placeholder="Назва предмету"
-          value={editBuf.subject ?? ""}
-          onChange={(e) =>
-            setEditBuf((prev) => ({ ...prev, subject: e.target.value }))
-          }
+        <NiceSelect
+          searchable
+          ariaLabel="Предмет"
+          placeholder="Предмет"
+          searchPlaceholder="Пошук предмета цієї групи…"
+          emptyText="У групи немає такого предмета (додайте в «Курси»)"
+          value={editBuf.subject || undefined}
+          onChange={pickSubject}
+          options={subjectOptions()}
         />
         <div className="flex gap-2">
           <NiceSelect
+            searchable
             className="flex-1"
             ariaLabel="Викладач"
             placeholder="Викладач"
             value={editBuf.teacher || undefined}
             onChange={(v) => setEditBuf((prev) => ({ ...prev, teacher: v }))}
-            options={teachers.map((t) => ({ value: t.name, label: t.name }))}
+            options={teacherOptions()}
           />
-          <input
-            className="input flex-1 hover-lift"
+          <NiceSelect
+            searchable
+            className="flex-1"
+            ariaLabel="Аудиторія"
             placeholder="Аудиторія"
-            value={editBuf.location ?? ""}
-            onChange={(e) =>
-              setEditBuf((prev) => ({ ...prev, location: e.target.value }))
-            }
+            searchPlaceholder="Пошук аудиторії…"
+            value={editBuf.location || undefined}
+            onChange={(v) => setEditBuf((prev) => ({ ...prev, location: v }))}
+            options={roomOptions()}
           />
         </div>
         <div className="flex items-center gap-2">
@@ -1356,14 +1507,21 @@ const FacultyScheduleTable: React.FC<{
           </div>
 
           {editable && !lessons && (
-            <button
-              className="btn py-2 px-4 rounded-xl hover-shadow disabled:opacity-50"
-              onClick={() => setSnapOpen(true)} // ← було: onClick={saveAll}
-              disabled={saving}
-              title={user?.id ? "Зберегти зміни" : "Потрібен користувач"}
-            >
-              {saving ? "Збереження…" : "Зберегти"}
-            </button>
+            <>
+              {saveStatus && (
+                <span className="text-sm text-muted-foreground max-w-[28rem] truncate" title={saveStatus}>
+                  {saveStatus}
+                </span>
+              )}
+              <button
+                className="btn py-2 px-4 rounded-xl hover-shadow disabled:opacity-50"
+                onClick={saveAll}
+                disabled={saving}
+                title="Зберегти зміни в цей розклад"
+              >
+                {saving ? "Збереження…" : "Зберегти"}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1841,73 +1999,6 @@ const FacultyScheduleTable: React.FC<{
           }))}
         />
       </div>
-
-      {snapOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={() => !snapBusy && setSnapOpen(false)}
-            />
-            <div
-              className="glasscard relative z-10 w-[min(560px,92vw)] max-h-[85vh] overflow-auto p-5 rounded-2xl"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="snap-title"
-            >
-              <div id="snap-title" className="text-lg font-semibold mb-3">
-                Зберегти до Архіву
-              </div>
-
-              <label className="block text-sm text-[var(--muted)] mb-1">
-                Назва
-              </label>
-              <input
-                className="input w-full mb-3"
-                placeholder="Напр. W36 — після правок"
-                value={snapTitle}
-                onChange={(e) => setSnapTitle(e.target.value)}
-                disabled={snapBusy}
-              />
-
-              <label className="block text-sm text-[var(--muted)] mb-1">
-                Коментар
-              </label>
-              <textarea
-                className="input w-full min-h-[96px]"
-                placeholder="Коротко опиши, що змінили"
-                value={snapComment}
-                onChange={(e) => setSnapComment(e.target.value)}
-                disabled={snapBusy}
-              />
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  className="btn px-4 py-2 rounded-xl"
-                  onClick={() => setSnapOpen(false)}
-                  disabled={snapBusy}
-                >
-                  Скасувати
-                </button>
-                <button
-                  className="btn px-4 py-2 rounded-xl"
-                  onClick={handleConfirmSnapshot}
-                  disabled={
-                    snapBusy || !snapTitle.trim() || !snapComment.trim()
-                  }
-                  title={
-                    !snapTitle.trim() || !snapComment.trim()
-                      ? "Заповни назву і коментар"
-                      : "Зберегти до Архіву"
-                  }
-                >
-                  {snapBusy ? "Зберігаємо…" : "Підтвердити"}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
     </div>
   );
 };

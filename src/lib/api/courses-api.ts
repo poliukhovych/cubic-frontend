@@ -11,6 +11,7 @@ export interface BackendCourse {
   code?: string;
   groupIds: string[];
   teacherIds: string[];
+  countPerWeek?: number;
 }
 
 export interface CoursesListResponse {
@@ -23,8 +24,10 @@ export interface CoursesListResponse {
 export interface CourseWritePayload {
   name: string;
   duration: number;
+  code?: string | null; // omitted on update = keep the current code
   group_ids: string[];
   teacher_ids: string[];
+  count_per_week?: number; // 1–50; omitted on update = keep the current value
 }
 
 function mapBackendCourse(c: BackendCourse): Course {
@@ -35,6 +38,7 @@ function mapBackendCourse(c: BackendCourse): Course {
     groupIds: c.groupIds ?? [],
     teacherId: c.teacherIds && c.teacherIds.length > 0 ? c.teacherIds[0] : null,
     duration: c.duration,
+    countPerWeek: c.countPerWeek ?? 1,
   };
 }
 

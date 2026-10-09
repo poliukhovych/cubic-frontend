@@ -15,6 +15,10 @@ type Props = {
   disabled?: boolean;
   /** скільки рядків видно без скролу */
   maxVisible?: number;
+  /** поле пошуку в меню: фільтрує опції за підрядком (без урахування регістру) */
+  searchable?: boolean;
+  searchPlaceholder?: string;
+  emptyText?: string;
 };
 
 /* ========= Non-shifting scroll lock =========
@@ -75,8 +79,19 @@ const NiceSelect: React.FC<Props> = ({
   className,
   disabled,
   maxVisible = 6,
+  searchable = false,
+  searchPlaceholder = "Пошук…",
+  emptyText = "Нічого не знайдено",
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const visibleOptions = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!searchable || !q) return options;
+    return options.filter((o) =>
+      (typeof o.label === "string" ? o.label : o.value).toLowerCase().includes(q)
+    );
+  }, [options, query, searchable]);
   const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties | null>(null);
   const [hoverIndex, setHoverIndex] = React.useState<number>(() =>
     Math.max(0, options.findIndex((o) => o.value === value))
@@ -167,6 +182,7 @@ const NiceSelect: React.FC<Props> = ({
     if (disabled) return;
     const initial = precomputeInitialStyle();
     setMenuStyle(initial); // ← вже є top/left/width на перший кадр
+    setQuery("");
     setOpen(true);
     lockBodyScroll(() => menuRef.current);
     // після монту уточнюємо
@@ -200,7 +216,7 @@ const NiceSelect: React.FC<Props> = ({
       if (e.key === "Escape") return closeMenu();
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setHoverIndex((i) => Math.min(options.length - 1, i + 1));
+        setHoverIndex((i) => Math.min(visibleOptions.length - 1, i + 1));
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -208,7 +224,7 @@ const NiceSelect: React.FC<Props> = ({
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        const opt = options[hoverIndex];
+        const opt = visibleOptions[hoverIndex];
         if (opt) {
           onChange(opt.value);
           closeMenu();
@@ -233,14 +249,14 @@ const NiceSelect: React.FC<Props> = ({
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [open, closeMenu, computePosition, options, hoverIndex, onChange]);
+  }, [open, closeMenu, computePosition, visibleOptions, hoverIndex, onChange]);
 
-  // виставити hover на поточне значення при відкритті
+  // виставити hover на поточне значення при відкритті (або на перший збіг під час пошуку)
   React.useEffect(() => {
     if (!open) return;
-    const idx = Math.max(0, options.findIndex((o) => o.value === value));
+    const idx = Math.max(0, visibleOptions.findIndex((o) => o.value === value));
     setHoverIndex(idx);
-  }, [open, value, options]);
+  }, [open, value, visibleOptions]);
 
   return (
     <>
@@ -286,7 +302,21 @@ const NiceSelect: React.FC<Props> = ({
                 "overflow-y-auto",
               ].join(" ")}
             >
-              {options.map((o, i) => {
+              {searchable && (
+                <div className="sticky top-0 p-2 bg-[var(--surface)] border-b border-[var(--border)]">
+                  <input
+                    autoFocus
+                    className="input w-full"
+                    placeholder={searchPlaceholder}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </div>
+              )}
+              {visibleOptions.length === 0 && (
+                <div className="px-4 py-2 text-[var(--muted)] select-none">{emptyText}</div>
+              )}
+              {visibleOptions.map((o, i) => {
                 const active = o.value === value;
                 const hovered = i === hoverIndex;
                 return (

@@ -27,7 +27,8 @@ export const config: RuntimeConfig = {
   GOOGLE_CLIENT_ID: (fromWindow as any).GOOGLE_CLIENT_ID || (fromVite as any).VITE_GOOGLE_CLIENT_ID || undefined,
   GOOGLE_REDIRECT_URI: (fromWindow as any).GOOGLE_REDIRECT_URI || (fromVite as any).VITE_GOOGLE_REDIRECT_URI || undefined,
   GOOGLE_USE_CODE_FLOW: (fromWindow as any).GOOGLE_USE_CODE_FLOW || (fromVite as any).VITE_GOOGLE_USE_CODE_FLOW || "0",
-  DEV_AUTH: (fromWindow as any).DEV_AUTH || (fromVite as any).VITE_DEV_AUTH || "1",
-  ADMIN_USERNAME: (fromWindow as any).ADMIN_USERNAME || (fromVite as any).VITE_ADMIN_USERNAME || "admin",
-  ADMIN_PASSWORD: (fromWindow as any).ADMIN_PASSWORD || (fromVite as any).VITE_ADMIN_PASSWORD || "admin123",
+  DEV_AUTH: (fromWindow as any).DEV_AUTH || (fromVite as any).VITE_DEV_AUTH || "0",
+  // Admin credentials are only available in `vite dev` (.env.development), never in production bundles or config.js
+  ADMIN_USERNAME: import.meta.env.DEV ? import.meta.env.VITE_ADMIN_USERNAME : undefined,
+  ADMIN_PASSWORD: import.meta.env.DEV ? import.meta.env.VITE_ADMIN_PASSWORD : undefined,
 };

@@ -7,9 +7,7 @@ set -e
 : "${GOOGLE_CLIENT_ID:=}"
 : "${GOOGLE_REDIRECT_URI:=}"
 : "${GOOGLE_USE_CODE_FLOW:=0}"
-: "${DEV_AUTH:=1}"
-: "${ADMIN_USERNAME:=admin}"
-: "${ADMIN_PASSWORD:=admin123}"
+: "${DEV_AUTH:=0}"
 
 # Generate runtime config (config.js) from environment variables
 envsubst '
@@ -19,8 +17,6 @@ envsubst '
 	$GOOGLE_REDIRECT_URI
 	$GOOGLE_USE_CODE_FLOW
 	$DEV_AUTH
-	$ADMIN_USERNAME
-	$ADMIN_PASSWORD
 ' < /config.template.js > "/usr/share/nginx/html/config.js"
 
 # Log configuration for debugging

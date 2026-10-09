@@ -57,13 +57,14 @@ export interface GeneratedAssignment {
   teacherName?: string | null;
   groupName?: string | null;
   courseName?: string | null;
+  pinned?: boolean;
 }
 
 export interface ScheduleResponse {
-  schedule_id: string;
+  scheduleId: string;
   label: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  isActive: boolean;
 }
 
 export interface GenerateScheduleResponse {
@@ -88,6 +89,16 @@ export async function generateScheduleApi(
 }
 
 /**
+ * Новий розклад на основі цього: закріплені пари (з БД) лишаються, решта перераховується
+ */
+export async function reoptimizeScheduleApi(
+  scheduleId: string,
+  payload: GenerateSchedulePayload
+): Promise<GenerateScheduleResponse> {
+  return await api.post<GenerateScheduleResponse>(`/schedules/${scheduleId}/reoptimize`, payload);
+}
+
+/**
  * Отримати список усіх розкладів
  */
 export async function fetchSchedulesApi(): Promise<ScheduleResponse[]> {
@@ -98,10 +109,17 @@ export async function fetchSchedulesApi(): Promise<ScheduleResponse[]> {
 }
 
 /**
- * Видалити розклад
+ * Видалити розклад разом із заняттями (активний — 409)
  */
 export async function deleteScheduleApi(scheduleId: string): Promise<void> {
   await api.delete(`/schedules/${scheduleId}`);
+}
+
+/**
+ * Зробити розклад активним (його бачать студенти й викладачі)
+ */
+export async function activateScheduleApi(scheduleId: string): Promise<ScheduleResponse> {
+  return await api.patch<ScheduleResponse>(`/schedules/${scheduleId}/activate`);
 }
 
 // ===== Legacy типи (для сумісності зі старим кодом) =====
@@ -172,7 +190,6 @@ export async function fetchTimeslotsMapApi(): Promise<TimeslotInfo[]> {
  * (assignments + інформація для маппінгу)
  */
 export interface ScheduleWithDetailsResponse {
-  message: string;
   schedule: ScheduleResponse;
   assignments: GeneratedAssignment[];
 }
@@ -188,4 +205,25 @@ export async function fetchScheduleDetailsApi(
   scheduleId: string
 ): Promise<ScheduleWithDetailsResponse> {
   return await api.get(`/schedules/${scheduleId}/details`);
+}
+
+export interface AssignmentWritePayload {
+  timeslotId: number;
+  groupId: string;
+  subgroupNo: number;
+  courseId: string;
+  teacherId: string;
+  roomId: string | null;
+  courseType: string;
+  pinned: boolean;
+}
+
+/**
+ * Зберегти ручні зміни: повністю замінює заняття розкладу (409 — накладки, 422 — невідомі id)
+ */
+export async function replaceScheduleAssignmentsApi(
+  scheduleId: string,
+  assignments: AssignmentWritePayload[]
+): Promise<ScheduleWithDetailsResponse> {
+  return await api.put(`/schedules/${scheduleId}/assignments`, { assignments });
 }
