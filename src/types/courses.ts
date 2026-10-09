@@ -8,4 +8,5 @@ export type Course = {
   groupIds: Id[]; // групи, що відвідують
   teacherId?: Id | null;
   duration?: number; // тривалість у годинах (з бекенду)
+  countPerWeek?: number; // пар на тиждень для кожної групи курсу (1–50)
 };
