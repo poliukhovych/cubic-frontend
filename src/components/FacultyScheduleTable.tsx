@@ -750,6 +750,7 @@ const FacultyScheduleTable: React.FC<{
   const [saving, setSaving] = useState(false);
 
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBuf, setEditBuf] = useState<Partial<FacultyLesson>>({});
   const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
@@ -855,6 +856,9 @@ const FacultyScheduleTable: React.FC<{
     };
 
     loadTeachers();
+    fetchCoursesApi()
+      .then(setCourses)
+      .catch((err) => console.error("❌ Failed to load courses:", err));
   }, []);
 
 
@@ -1323,6 +1327,29 @@ const FacultyScheduleTable: React.FC<{
 }, [viewLessons, groups, dense, editingId, baseHalfMin, allLessons.length]); // Додаємо allLessons.length як dependency
 
   /* ---------- інлайн-редактор (вставляється замість картки) ---------- */
+  // Предмет обирається лише з курсів, прив'язаних до групи колонки (інакше його не зберегти)
+  const subjectOptions = () => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const scoped = groupId ? courses.filter((c) => c.groupIds.includes(groupId)) : courses;
+    const options = scoped
+      .map((c) => ({ value: c.title, label: c.code ? `${c.title} · ${c.code}` : c.title }))
+      .sort((a, b) => a.value.localeCompare(b.value, "uk"));
+    const current = editBuf.subject?.trim();
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return options;
+  };
+
+  const pickSubject = (title: string) => {
+    const groupId = lookupRef.current?.groupByLabel.get((editBuf.group ?? "").trim())?.groupId;
+    const course = courses.find(
+      (c) => c.title === title && (!groupId || c.groupIds.includes(groupId))
+    );
+    const teacherName = teachers.find((t) => t.id === course?.teacherId)?.name;
+    setEditBuf((prev) => ({ ...prev, subject: title, ...(teacherName ? { teacher: teacherName } : {}) }));
+  };
+
   const renderInlineEditor = () => (
     <div
       className={[
@@ -1331,16 +1358,19 @@ const FacultyScheduleTable: React.FC<{
       ].join(" ")}
     >
       <div className="flex flex-col gap-2">
-        <input
-          className="input hover-lift"
-          placeholder="Назва предмету"
-          value={editBuf.subject ?? ""}
-          onChange={(e) =>
-            setEditBuf((prev) => ({ ...prev, subject: e.target.value }))
-          }
+        <NiceSelect
+          searchable
+          ariaLabel="Предмет"
+          placeholder="Предмет"
+          searchPlaceholder="Пошук предмета цієї групи…"
+          emptyText="У групи немає такого предмета (додайте в «Курси»)"
+          value={editBuf.subject || undefined}
+          onChange={pickSubject}
+          options={subjectOptions()}
         />
         <div className="flex gap-2">
           <NiceSelect
+            searchable
             className="flex-1"
             ariaLabel="Викладач"
             placeholder="Викладач"
