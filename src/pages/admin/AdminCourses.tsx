@@ -120,14 +120,12 @@ const AdminCourses: React.FC = () => {
       const created = await createCourseApi({
         name: courseForm.title,
         duration: durationNumber,
+        code: courseForm.code.trim() || null,
         group_ids: courseForm.groupIds,
         teacher_ids: buildTeacherIds(),
       });
 
-      const newCourse: Course = {
-        ...created,
-        code: courseForm.code || created.code || "",
-      };
+      const newCourse: Course = created;
 
       setCourses([...courses, newCourse]);
       setDialogOpen(false);
@@ -164,14 +162,12 @@ const AdminCourses: React.FC = () => {
       const updated = await updateCourseApi(editingCourse.id, {
         name: courseForm.title,
         duration: durationNumber,
+        code: courseForm.code.trim() || null,
         group_ids: courseForm.groupIds,
         teacher_ids: buildTeacherIds(),
       });
 
-      const next: Course = {
-        ...updated,
-        code: courseForm.code || updated.code || "",
-      };
+      const next: Course = updated;
 
       setCourses(courses.map((c) => (c.id === next.id ? next : c)));
 
@@ -312,12 +308,16 @@ const AdminCourses: React.FC = () => {
                       className="border-b border-border/50 hover:bg-surface-2/30 transition-colors"
                     >
                       <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className="font-mono bg-blue-500/20 text-blue-300 border-blue-500/30"
-                        >
-                          {c.code}
-                        </Badge>
+                        {c.code ? (
+                          <Badge
+                            variant="outline"
+                            className="font-mono bg-blue-500/20 text-blue-300 border-blue-500/30"
+                          >
+                            {c.code}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="p-3 font-medium">{c.title}</td>
                       <td className="p-3 text-muted">
@@ -432,10 +432,10 @@ const AdminCourses: React.FC = () => {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Код курсу (локальний)
+                  Код курсу
                 </label>
                 <Input
-                  placeholder="DB101 (не зберігається в бекенді)"
+                  placeholder="Напр. DB101 (необов'язково)"
                   value={courseForm.code}
                   onChange={(e) =>
                     setCourseForm({ ...courseForm, code: e.target.value })

@@ -23,6 +23,7 @@ export interface CoursesListResponse {
 export interface CourseWritePayload {
   name: string;
   duration: number;
+  code?: string | null; // omitted on update = keep the current code
   group_ids: string[];
   teacher_ids: string[];
 }
