@@ -162,14 +162,7 @@ const OAuthCallback: React.FC = () => {
 
         // Verify token is saved
         const savedToken = localStorage.getItem('access_token');
-        console.log('[AUTH][OAuthCallback] Token saved:', {
-          saved: !!savedToken,
-          tokenLength: savedToken?.length,
-          tokenPreview: savedToken ? `${savedToken.substring(0, 20)}...` : null,
-          userEmail: data.user?.email || data.user?.Email,
-          userRole: data.user?.role || data.user?.Role,
-          rawData: { accessToken: data.accessToken, access_token: data.access_token }
-        });
+        console.log('[AUTH][OAuthCallback] Token saved:', !!savedToken);
 
         // Clear OAuth session data
         sessionStorage.removeItem('oauth_state');
@@ -188,11 +181,6 @@ const OAuthCallback: React.FC = () => {
           if (!tokenBeforeRefresh) {
             throw new Error('Token was not saved properly');
           }
-
-          console.log('[AUTH][OAuthCallback] Calling refreshMe() with token:', {
-            tokenExists: !!tokenBeforeRefresh,
-            tokenLength: tokenBeforeRefresh.length
-          });
 
           await refreshMe();
           console.log('[AUTH][OAuthCallback] AuthContext updated after login');

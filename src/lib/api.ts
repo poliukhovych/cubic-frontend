@@ -22,32 +22,12 @@ async function request<T>(
     ...headers,
   };
 
-  // Log request details for /auth/me endpoint
-  if (path === '/auth/me') {
-    console.log('[API] Request to /auth/me:', {
-      url,
-      method,
-      hasToken: !!token,
-      tokenLength: token?.length,
-      headers: { ...requestHeaders, Authorization: token ? `Bearer ${token.substring(0, 20)}...` : undefined },
-    });
-  }
-
   const res = await fetch(url, {
     method,
     credentials: "include",
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
   });
-
-  // Log response details for /auth/me endpoint
-  if (path === '/auth/me') {
-    console.log('[API] Response from /auth/me:', {
-      status: res.status,
-      statusText: res.statusText,
-      ok: res.ok,
-    });
-  }
 
   if (!res.ok) {
     let err: any = { status: res.status, statusText: res.statusText };

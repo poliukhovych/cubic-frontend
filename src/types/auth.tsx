@@ -34,7 +34,7 @@ type AuthCtx = {
 import { config } from "@/config/runtime";
 
 // ---- DEV SWITCH ----
-const DEV_AUTH = (config.DEV_AUTH ?? "1") === "1"; // ✅ За замовчуванням увімкнено
+const DEV_AUTH = (config.DEV_AUTH ?? "0") === "1";
 
 // ключі для localStorage
 const STORAGE_KEY = "cubic.auth.user";
@@ -212,14 +212,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Для адміністратора виконуємо автоматичний логін через API
     if (role === "admin") {
       try {
+        if (!config.ADMIN_USERNAME || !config.ADMIN_PASSWORD) {
+          throw new Error('VITE_ADMIN_USERNAME / VITE_ADMIN_PASSWORD are not set (dev only)');
+        }
         // Nginx проксує /api/* на бекенд, тому просто використовуємо /api/...
         const endpoint = `${config.API_BASE_URL}/auth/admin/login`;
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            username: config.ADMIN_USERNAME || 'admin',
-            password: config.ADMIN_PASSWORD || 'admin123'
+            username: config.ADMIN_USERNAME,
+            password: config.ADMIN_PASSWORD
           }),
         });
 
@@ -257,7 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Оновлюємо стан після збереження токену
           await refreshMe();
           
-          console.log('[AUTH][DEV] Admin auto-login successful:', { token: token.substring(0, 20) + '...', user: adminUser });
+          console.log('[AUTH][DEV] Admin auto-login successful');
         } else {
           // Якщо API не працює, показуємо помилку
           const errorText = await response.text();
