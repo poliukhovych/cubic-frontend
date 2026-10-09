@@ -57,6 +57,7 @@ export interface GeneratedAssignment {
   teacherName?: string | null;
   groupName?: string | null;
   courseName?: string | null;
+  pinned?: boolean;
 }
 
 export interface ScheduleResponse {
@@ -85,6 +86,16 @@ export async function generateScheduleApi(
     "/schedules/generate",
     payload
   );
+}
+
+/**
+ * Новий розклад на основі цього: закріплені пари (з БД) лишаються, решта перераховується
+ */
+export async function reoptimizeScheduleApi(
+  scheduleId: string,
+  payload: GenerateSchedulePayload
+): Promise<GenerateScheduleResponse> {
+  return await api.post<GenerateScheduleResponse>(`/schedules/${scheduleId}/reoptimize`, payload);
 }
 
 /**
@@ -204,6 +215,7 @@ export interface AssignmentWritePayload {
   teacherId: string;
   roomId: string | null;
   courseType: string;
+  pinned: boolean;
 }
 
 /**

@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { fetchAdminStats as fetchAdminStatsReal } from "@/lib/api/admin";
-import { generateScheduleApi, type GenerateSchedulePayload } from "@/lib/api/schedule-api";
+import {
+  generateScheduleApi,
+  fetchSchedulesApi,
+  reoptimizeScheduleApi,
+  type GenerateSchedulePayload,
+} from "@/lib/api/schedule-api";
 import { Users, BookOpen, Archive, IdCard } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import ViewModeToggle from "./ViewModeToggle";
@@ -13,6 +18,22 @@ import Reveal from "./Reveal";
 import Crossfade from "./Crossfade";
 
 type Stats = { students: number; teachers: number; courses: number };
+
+// 🔹 Захардкоджені параметри (можна винести в конфіг пізніше)
+const buildSolvePayload = (): GenerateSchedulePayload => ({
+  policy: {
+    soft_weights: {
+      daily_load_balance: 10,
+      windows_penalty: 20,
+      teacher_avoid_slots_penalty: 50,
+      teacher_preferred_days_penalty: 15,
+    },
+  },
+  params: {
+    timeLimitSec: 20,
+  },
+  schedule_label: `Розклад ${new Date().toLocaleDateString("uk-UA")} ${new Date().toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`,
+});
 
 const StatTile: React.FC<{
   to: string;
@@ -75,21 +96,7 @@ const AdminQuickPanel: React.FC<{
     setSolving(true);
 
     try {
-      // 🔹 Захардкоджені параметри (можна винести в конфіг пізніше)
-      const payload: GenerateSchedulePayload = {
-        policy: {
-          soft_weights: {
-            daily_load_balance: 10,
-            windows_penalty: 20,
-            teacher_avoid_slots_penalty: 50,
-            teacher_preferred_days_penalty: 15,
-          },
-        },
-        params: {
-          timeLimitSec: 20,
-        },
-        schedule_label: `Розклад ${new Date().toLocaleDateString("uk-UA")} ${new Date().toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}`,
-      };
+      const payload = buildSolvePayload();
 
       console.log("🚀 Генерація розкладу...", payload);
 
@@ -121,6 +128,37 @@ const AdminQuickPanel: React.FC<{
       console.error("❌ Помилка генерації розкладу:", e);
       const errorMsg = e?.detail || e?.message || "Не вдалося згенерувати розклад";
       flash(`Помилка: ${errorMsg}`);
+    } finally {
+      setSolving(false);
+    }
+  };
+
+  // Закріплені пари беруться з БД (збереженого активного розкладу), решта перераховується
+  const handleOptimizeClick = async () => {
+    if (solving) return;
+    if (
+      !window.confirm(
+        "Закріплені пари лишаться на місці, решту розкладу буде складено заново.\n" +
+          "Враховуються лише збережені зміни — незбережені буде втрачено. Продовжити?"
+      )
+    )
+      return;
+    setSolving(true);
+    try {
+      const active = (await fetchSchedulesApi()).find((s) => s.isActive);
+      if (!active) {
+        flash("Немає активного розкладу — спершу натисніть «Вирішити»");
+        return;
+      }
+      const response = await reoptimizeScheduleApi(active.scheduleId, buildSolvePayload());
+      const scheduleArray = response.schedule || [];
+      const pinned = scheduleArray.filter((a) => a.pinned).length;
+      flash(`Розклад оптимізовано: ${scheduleArray.length} пар, закріплених ${pinned}.`);
+      onScheduleGenerated?.("latest");
+    } catch (err) {
+      const e = err as { detail?: string; message?: string };
+      console.error("❌ Помилка оптимізації розкладу:", e);
+      flash(`Помилка: ${e?.detail || e?.message || "Не вдалося оптимізувати розклад"}`);
     } finally {
       setSolving(false);
     }
@@ -200,9 +238,10 @@ const AdminQuickPanel: React.FC<{
                   </button>
                   <button
                     className="btn py-3 rounded-2xl hover-shadow"
-                    onClick={() => flash("Оптимізація поки не реалізована")}
+                    onClick={handleOptimizeClick}
+                    disabled={solving}
                   >
-                    Оптимізувати
+                    {solving ? "Зачекайте..." : "Оптимізувати"}
                   </button>
                   <button
                     className="btn py-3 rounded-2xl hover-shadow"
